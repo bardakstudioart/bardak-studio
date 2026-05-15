@@ -49,8 +49,9 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
 .btn.red{background:var(--dangerl);color:var(--danger);border-color:var(--danger)}
 .btn.sm{font-size:11px;padding:4px 10px;border-radius:7px}
 .btn.ic{width:30px;height:30px;padding:0;justify-content:center;border-radius:8px}
-#scanner-box{width:100%;max-width:420px;margin:0 auto;border-radius:12px;overflow:hidden;background:#111;min-height:240px;display:flex;align-items:center;justify-content:center;position:relative}
-#scanner-box video{width:100%;display:block}
+#scanner-box{width:100%;max-width:420px;margin:0 auto;border-radius:12px;overflow:hidden;background:#111;min-height:280px;display:flex;align-items:center;justify-content:center;position:relative}
+#scanner-box video{width:100%;height:100%;object-fit:cover;display:block}
+#scanner-box canvas{display:none!important}
 .scan-overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;pointer-events:none}
 .scan-overlay.on{display:flex}
 .scan-frame{width:200px;height:120px;border:2.5px solid #9FE1CB;border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,0.45);position:relative}
@@ -311,6 +312,7 @@ var DEFAULTS=[
   {id:'P027',name:'Магнит Черепашка',price:6000,owner:'masha'}
 ];
 
+function fmt(n){return Math.round(n).toLocaleString('ru-RU')+' ₩';}
 function updatePrice(fbKey,val){
   var price=parseFloat(val)||0;
   if(price<=0)return;
@@ -398,8 +400,8 @@ function startScanner(){
   document.getElementById('scan-status').textContent='Наводите камеру на штрихкод...';
   document.getElementById('scan-btn').textContent='⏹ Остановить';
   Quagga.init({
-    inputStream:{name:'Live',type:'LiveStream',target:box,constraints:{facingMode:'environment',width:640,height:360}},
-    decoder:{readers:['code_128_reader','ean_reader']},locate:true
+    inputStream:{name:'Live',type:'LiveStream',target:box,constraints:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}},
+    decoder:{readers:['code_128_reader','ean_reader']},locate:true,numOfWorkers:2,frequency:10
   },function(err){
     if(err){
       document.getElementById('scan-status').textContent='⚠️ Нет доступа к камере';
