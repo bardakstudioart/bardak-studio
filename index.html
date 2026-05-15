@@ -332,8 +332,11 @@ function toast(msg,type){
   clearTimeout(t._timer); t._timer=setTimeout(function(){t.className='toast';},2200);
 }
 function setSyncStatus(s){
-  document.getElementById('sync-dot').className='sync-dot '+s;
-  document.getElementById('sync-lbl').textContent=s==='ok'?'онлайн':s==='spin'?'синхронизация...':s==='err'?'ошибка':'...';
+  var dot=document.getElementById('sync-dot');
+  var lbl=document.getElementById('sync-lbl');
+  if(s==='ok' && dot.className.indexOf('ok')>=0) return; // already ok, don't flicker
+  dot.className='sync-dot '+s;
+  lbl.textContent=s==='ok'?'онлайн':s==='spin'?'синхронизация...':s==='err'?'ошибка':'...';
 }
 
 // AUTH
@@ -374,7 +377,7 @@ function startListeners(){
     sales=[];
     snap.forEach(function(c){sales.push(Object.assign({fbKey:c.key},c.val()));});
     sales.sort(function(a,b){return(b.ts||0)-(a.ts||0);});
-    updateScanStats(); renderTodayLog(); renderAllSales(); renderInventory();
+    updateScanStats(); renderTodayLog(); renderAllSales(); renderInventory(); setSyncStatus('ok');
   },function(){setSyncStatus('err');});
 }
 
