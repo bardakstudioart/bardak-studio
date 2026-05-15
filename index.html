@@ -33,7 +33,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
 .tab.on{background:#fff;color:var(--text)}
 
 .main{padding:1.25rem 1.5rem 3rem;max-width:1000px;margin:0 auto}
-.section{display:none}.section.on{display:block}
+.section{display:none}.section.on{display:block;min-height:100vh}
 
 .card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);margin-bottom:1rem;overflow:hidden}
 .card-hd{padding:.9rem 1.25rem;border-bottom:1px solid var(--border);background:#FAFAF8;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -278,6 +278,7 @@ input.fi:focus,select.fi:focus{border-color:var(--k)}
     <button class="btn sm" id="f-all" onclick="filterCat('all')" style="background:var(--text);color:#fff;border-color:var(--text)">Все</button>
     <button class="btn sm badge k" id="f-katya" onclick="filterCat('katya')">Bardak Studio</button>
     <button class="btn sm badge m" id="f-masha" onclick="filterCat('masha')">SealMary</button>
+    <button class="btn sm danger" onclick="resetAllProducts()" style="margin-left:auto">↺ Загрузить все товары</button>
   </div>
   <div class="cat-grid" id="cat-grid"></div>
 </section>
@@ -307,7 +308,7 @@ input.fi:focus,select.fi:focus{border-color:var(--k)}
 <div class="print-area" id="print-area"></div>
 
 <!-- LOGIN SCREEN -->
-<div id="login-screen" style="position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center;padding:1rem">
+<div id="login-screen" style="position:fixed;inset:0;background:var(--bg);z-index:999;display:none;align-items:center;justify-content:center;padding:1rem">
   <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:2rem;width:100%;max-width:360px">
     <div style="text-align:center;margin-bottom:1.5rem">
       <div class="logo" style="font-size:1.3rem;margin-bottom:4px">Bardak <span>Studio</span></div>
@@ -475,7 +476,9 @@ async function deleteSaleFb(fbKey) {
 }
 
 // ---- DEFAULT PRODUCTS ----
-function initDefaultProducts() {
+async function resetAllProducts() {
+  if (!confirm('Удалить все товары и загрузить стандартные 27? Это сотрёт текущий каталог!')) return;
+  await set(ref(db, 'products'), null);
   const defaults = [
     {name:'Брелок (круглый)',price:3000,owner:'katya'},
     {name:'Брелок Слова',price:3000,owner:'katya'},
@@ -505,11 +508,15 @@ function initDefaultProducts() {
     {name:'Брелок Дерпи',price:3000,owner:'masha'},
     {name:'Магнит Черепашка',price:6000,owner:'masha'},
   ];
-  defaults.forEach((p, i) => {
+  for (let i = 0; i < defaults.length; i++) {
     const id = 'P' + String(i+1).padStart(3,'0');
-    push(ref(db, 'products'), { id, ...p, brought:0, sold:0 });
-  });
+    await push(ref(db, 'products'), { id, ...defaults[i], brought:0, sold:0 });
+  }
+  toast('✓ Все 27 товаров загружены!', 'success');
 }
+window.resetAllProducts = resetAllProducts;
+
+function initDefaultProducts() {} // пусто — теперь только через кнопку
 
 // ---- TABS ----
 function go(name, btn) {
