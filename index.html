@@ -75,7 +75,13 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font
 .cat-info{flex:1}
 .cat-name{font-weight:700;font-size:14px;margin-bottom:4px}
 .cat-price{font-family:'Unbounded',sans-serif;font-size:.9rem;font-weight:600;color:var(--k)}
-.cat-code{font-size:9px;color:var(--muted);margin-top:2px;font-family:monospace}
+.cat-name-input{font-weight:700;font-size:14px;border:none;background:transparent;color:var(--text);width:100%;outline:none;font-family:'Nunito',sans-serif;cursor:text;padding:0}
+.cat-name-input:hover{border-bottom:1.5px dashed var(--border)}
+.cat-name-input:focus{border-bottom:1.5px solid var(--k)}
+.cat-price-input{font-family:'Unbounded',sans-serif;font-size:.9rem;font-weight:600;color:var(--k);border:none;background:transparent;width:80px;outline:none;cursor:text;padding:0}
+.cat-price-input:hover{border-bottom:1.5px dashed var(--k)}
+.cat-price-input:focus{border-bottom:1.5px solid var(--k)}
+
 .barcode-wrap{background:#fff;border-radius:8px;padding:8px 4px 4px;text-align:center;border:1px solid var(--border)}
 .barcode-wrap canvas{max-width:100%!important;height:48px!important;display:block;margin:0 auto}
 .inv-hdr,.inv-row{display:grid;grid-template-columns:1fr 80px 80px 80px 80px;gap:8px;align-items:center;padding:.6rem 1.25rem;border-bottom:1px solid var(--border);font-size:13px}
@@ -305,7 +311,18 @@ var DEFAULTS=[
   {id:'P027',name:'Магнит Черепашка',price:6000,owner:'masha'}
 ];
 
-function fmt(n){return Math.round(n).toLocaleString('ru-RU')+' ₩';}
+function updatePrice(fbKey,val){
+  var price=parseFloat(val)||0;
+  if(price<=0)return;
+  db.ref('products/'+fbKey).update({price:price});
+  toast('Цена обновлена','ok');
+}
+function updateName(fbKey,val){
+  var name=val.trim();
+  if(!name)return;
+  db.ref('products/'+fbKey).update({name:name});
+  toast('Название обновлено','ok');
+}
 function ownerLabel(o){return o==='katya'?'Bardak Studio':'SealMary';}
 function payIcon(p){return p==='cash'?'💵':p==='card'?'💳':'📱';}
 function pad(n){return ('0'+n).slice(-2);}
@@ -572,10 +589,11 @@ function renderCatalog(){
     div.className='cat-card';
     div.innerHTML='<div class="cat-top">'
       +'<div class="cat-info">'
-      +'<div class="cat-name">'+p.name+'</div>'
+      +'<input class="cat-name-input" value="'+p.name+'" onchange="updateName(\''+p.fbKey+'\',this.value)" title="Нажмите чтобы изменить название">'
       +'<div style="display:flex;gap:6px;align-items:center;margin-top:4px">'
       +'<span class="bdg '+(p.owner||'k')[0]+'">'+ownerLabel(p.owner)+'</span>'
-      +'<span class="cat-price">'+fmt(p.price)+'</span>'
+      +'<input class="cat-price-input" type="number" value="'+p.price+'" min="0" step="500" onchange="updatePrice(\''+p.fbKey+'\',this.value)" title="Нажмите чтобы изменить цену">'
+      +'<span style="font-size:11px;color:var(--muted)">₩</span>'
       +'</div>'
       +'<div class="cat-code">'+p.id+'</div>'
       +'</div>'
@@ -602,10 +620,16 @@ function printLabels(){
   var pa=document.getElementById('print-area');
   pa.innerHTML='<div class="label-sheet">'+list.map(function(p){
     var tmp=document.createElement('canvas');
-    try{JsBarcode(tmp,p.id,{format:'CODE128',width:1.8,height:50,displayValue:false,margin:4});}catch(e){}
-    return '<div class="label"><div class="label-name">'+p.name+'</div><div class="label-owner">'+ownerLabel(p.owner)+'</div><div class="label-price">'+fmt(p.price)+'</div><img src="'+tmp.toDataURL('image/png')+'" style="width:100%;max-width:150px"></div>';
+    try{JsBarcode(tmp,p.id,{format:'CODE128',width:2,height:60,displayValue:true,margin:6,fontSize:10});}catch(e){}
+    var dataUrl=tmp.toDataURL('image/png');
+    return '<div class="label">'
+      +'<div class="label-name">'+p.name+'</div>'
+      +'<div class="label-owner">'+ownerLabel(p.owner)+'</div>'
+      +'<div class="label-price">'+fmt(p.price)+'</div>'
+      +'<img src="'+dataUrl+'" style="width:100%;max-width:160px;display:block;margin:0 auto">'
+      +'</div>';
   }).join('')+'</div>';
-  window.print();
+  setTimeout(function(){ window.print(); }, 300);
 }
 
 // INVENTORY
