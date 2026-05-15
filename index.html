@@ -7,152 +7,134 @@
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --k:#1D9E75;--kl:#E1F5EE;--k2:#0F6E56;
   --m:#7F77DD;--ml:#EEEDFE;--m2:#3C3489;
   --bg:#F7F5F0;--surface:#fff;--border:rgba(0,0,0,0.09);
-  --text:#1A1A1A;--muted:#888;--danger:#E24B4A;--dangerl:#FCEBEB;
-  --r:14px;
+  --text:#1A1A1A;--muted:#888;--danger:#E24B4A;--dangerl:#FCEBEB;--r:14px;
 }
 body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font-size:15px;min-height:100vh}
-
 .hdr{background:var(--text);color:#fff;padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;position:sticky;top:0;z-index:100}
 .logo{font-family:'Unbounded',sans-serif;font-size:1rem;font-weight:700;letter-spacing:-.02em}
 .logo span{color:#9FE1CB}
-.sync-dot{width:8px;height:8px;border-radius:50%;background:#555;display:inline-block;margin-left:8px;transition:background .3s}
-.sync-dot.ok{background:#9FE1CB}
-.sync-dot.err{background:#E24B4A}
-.sync-dot.syncing{background:#FAC775;animation:pulse .8s ease-in-out infinite}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:#555;display:inline-block;margin-left:8px}
+.sync-dot.ok{background:#9FE1CB}.sync-dot.err{background:#E24B4A}
+.sync-dot.spin{background:#FAC775;animation:pulse .8s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-.sync-label{font-size:11px;opacity:.6;margin-left:4px}
-
+.sync-lbl{font-size:11px;opacity:.6;margin-left:4px}
 .tabs{display:flex;gap:3px;background:rgba(255,255,255,0.12);border-radius:10px;padding:3px}
 .tab{font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;padding:6px 14px;border:none;border-radius:7px;cursor:pointer;background:transparent;color:rgba(255,255,255,0.55);transition:all .2s;white-space:nowrap}
 .tab.on{background:#fff;color:var(--text)}
-
 .main{padding:1.25rem 1.5rem 3rem;max-width:1000px;margin:0 auto}
-.section{display:none}.section.on{display:block;min-height:100vh}
-
+.pg{display:none}.pg.on{display:block}
 .card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);margin-bottom:1rem;overflow:hidden}
 .card-hd{padding:.9rem 1.25rem;border-bottom:1px solid var(--border);background:#FAFAF8;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .card-hd h3{font-family:'Unbounded',sans-serif;font-size:.8rem;font-weight:600;flex:1}
-
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:1.25rem}
 .stat{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:1rem 1.1rem}
-.stat-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px}
-.stat-val{font-family:'Unbounded',sans-serif;font-size:1.25rem;font-weight:600}
-.stat-val.g{color:var(--k)}.stat-val.p{color:var(--m)}.stat-val.n{color:var(--text)}
-
-.badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;display:inline-block}
-.badge.k{background:var(--kl);color:var(--k2)}
-.badge.m{background:var(--ml);color:var(--m2)}
-
+.slbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px}
+.sval{font-family:'Unbounded',sans-serif;font-size:1.25rem;font-weight:600}
+.sval.g{color:var(--k)}.sval.p{color:var(--m)}
+.bdg{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;display:inline-block}
+.bdg.k{background:var(--kl);color:var(--k2)}.bdg.m{background:var(--ml);color:var(--m2)}
 .btn{font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;padding:7px 16px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
 .btn:hover{background:var(--bg)}
-.btn.primary{background:var(--text);color:#fff;border-color:var(--text)}.btn.primary:hover{opacity:.85}
-.btn.green{background:var(--k);color:#fff;border-color:var(--k)}.btn.green:hover{background:var(--k2)}
-.btn.danger{background:var(--dangerl);color:var(--danger);border-color:var(--danger)}
+.btn.pri{background:var(--text);color:#fff;border-color:var(--text)}.btn.pri:hover{opacity:.85}
+.btn.grn{background:var(--k);color:#fff;border-color:var(--k)}.btn.grn:hover{background:var(--k2)}
+.btn.red{background:var(--dangerl);color:var(--danger);border-color:var(--danger)}
 .btn.sm{font-size:11px;padding:4px 10px;border-radius:7px}
-.btn.icon{width:30px;height:30px;padding:0;justify-content:center;border-radius:8px}
-
-.scanner-wrap{position:relative;width:100%;max-width:420px;margin:0 auto}
-#scanner-box{width:100%;border-radius:12px;overflow:hidden;background:#111;position:relative;min-height:240px;display:flex;align-items:center;justify-content:center}
-#scanner-box video{width:100%;display:block;border-radius:12px}
-.scan-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
-.scan-frame{width:200px;height:120px;border:2.5px solid #9FE1CB;border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,0.45)}
-.scan-line{position:absolute;width:180px;height:2px;background:linear-gradient(90deg,transparent,#9FE1CB,transparent);animation:scanline 1.8s ease-in-out infinite}
-@keyframes scanline{0%{top:calc(50% - 55px)}100%{top:calc(50% + 55px)}}
-.scan-status{margin-top:.75rem;text-align:center;font-size:13px;font-weight:600;color:var(--muted)}
+.btn.ic{width:30px;height:30px;padding:0;justify-content:center;border-radius:8px}
+#scanner-box{width:100%;max-width:420px;margin:0 auto;border-radius:12px;overflow:hidden;background:#111;min-height:240px;display:flex;align-items:center;justify-content:center;position:relative}
+#scanner-box video{width:100%;display:block}
+.scan-overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;pointer-events:none}
+.scan-overlay.on{display:flex}
+.scan-frame{width:200px;height:120px;border:2.5px solid #9FE1CB;border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,0.45);position:relative}
+.scan-line{position:absolute;width:180px;height:2px;background:linear-gradient(90deg,transparent,#9FE1CB,transparent);left:0;animation:scanline 1.8s ease-in-out infinite}
+@keyframes scanline{0%{top:10px}100%{top:100px}}
 .scan-result{background:var(--kl);border:1px solid var(--k);border-radius:var(--r);padding:1rem 1.25rem;margin-top:1rem;display:none}
 .scan-result.on{display:block}
-.scan-result-name{font-family:'Unbounded',sans-serif;font-size:1rem;font-weight:600;margin-bottom:6px}
-.scan-result-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
-.pay-btns{display:flex;gap:6px;flex-wrap:wrap}
 .pay-btn{font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;padding:8px 18px;border-radius:9px;border:2px solid var(--border);background:white;cursor:pointer;transition:all .15s}
-.pay-btn:hover{border-color:var(--k);color:var(--k)}
-.pay-btn.selected{border-color:var(--k);background:var(--kl);color:var(--k2)}
-
-.sales-log{max-height:340px;overflow-y:auto}
-.log-row{display:flex;align-items:center;gap:10px;padding:.6rem 1.25rem;border-bottom:1px solid var(--border);font-size:14px;animation:fadeIn .3s ease}
-@keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.pay-btn.on{border-color:var(--k);background:var(--kl);color:var(--k2)}
+.log{max-height:340px;overflow-y:auto}
+.log-row{display:flex;align-items:center;gap:10px;padding:.6rem 1.25rem;border-bottom:1px solid var(--border);font-size:14px}
 .log-row:last-child{border-bottom:none}
 .log-row:hover{background:#FAFAF8}
-.log-product{flex:1;font-weight:600}
-.log-amount{font-family:'Unbounded',sans-serif;font-size:.85rem;font-weight:600}
-.log-del{width:24px;height:24px;border-radius:6px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center}
-.log-del:hover{background:var(--dangerl);color:var(--danger)}
-.empty-state{text-align:center;padding:2.5rem 1rem;color:var(--muted);font-size:14px}
-
-.cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;padding:1rem 1.25rem}
-.cat-item{border:1px solid var(--border);border-radius:12px;padding:1rem;display:flex;flex-direction:column;gap:.6rem;background:#FAFAF8}
-.cat-item-top{display:flex;align-items:flex-start;gap:10px}
-.cat-item-info{flex:1}
-.cat-item-name{font-weight:700;font-size:14px;margin-bottom:3px}
-.cat-item-price{font-family:'Unbounded',sans-serif;font-size:.9rem;font-weight:600;color:var(--k)}
-.cat-barcode-wrap{background:#fff;border-radius:8px;padding:8px 6px 4px;text-align:center;border:1px solid var(--border)}
-.cat-barcode-wrap canvas{max-width:100%;height:48px!important}
-.cat-code-txt{font-size:9px;color:var(--muted);margin-top:2px;font-family:monospace}
-
-.print-area{display:none}
-@media print{
-  body>*{display:none!important}
-  .print-area{display:block!important}
-  .label-sheet{display:flex;flex-wrap:wrap;gap:0}
-  .label{border:1px solid #ddd;padding:8px;page-break-inside:avoid;text-align:center;width:62mm;box-sizing:border-box}
-  .label-name{font-size:10px;font-weight:700;margin-bottom:2px}
-  .label-price{font-size:12px;font-weight:700;margin-bottom:1px}
-  .label-owner{font-size:8px;color:#555;margin-bottom:3px}
-}
-
-input.fi,select.fi{font-family:'Nunito',sans-serif;font-size:14px;border:1px solid var(--border);border-radius:8px;padding:6px 10px;outline:none;background:white;color:var(--text);transition:border-color .15s}
-input.fi:focus,select.fi:focus{border-color:var(--k)}
-
-.inv-row{display:grid;grid-template-columns:1fr 70px 70px 70px 80px;gap:8px;align-items:center;padding:.6rem 1.25rem;border-bottom:1px solid var(--border);font-size:13px}
+.log-name{flex:1;font-weight:600}
+.log-amt{font-family:'Unbounded',sans-serif;font-size:.85rem;font-weight:600}
+.del-btn{width:24px;height:24px;border-radius:6px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center}
+.del-btn:hover{background:var(--dangerl);color:var(--danger)}
+.empty{text-align:center;padding:2.5rem 1rem;color:var(--muted);font-size:14px}
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1rem;padding:1rem 1.25rem}
+.cat-card{border:1px solid var(--border);border-radius:12px;padding:1rem;background:#FAFAF8}
+.cat-top{display:flex;align-items:flex-start;gap:8px;margin-bottom:.75rem}
+.cat-info{flex:1}
+.cat-name{font-weight:700;font-size:14px;margin-bottom:4px}
+.cat-price{font-family:'Unbounded',sans-serif;font-size:.9rem;font-weight:600;color:var(--k)}
+.cat-code{font-size:9px;color:var(--muted);margin-top:2px;font-family:monospace}
+.barcode-wrap{background:#fff;border-radius:8px;padding:8px 4px 4px;text-align:center;border:1px solid var(--border)}
+.barcode-wrap canvas{max-width:100%!important;height:48px!important;display:block;margin:0 auto}
+.inv-hdr,.inv-row{display:grid;grid-template-columns:1fr 80px 80px 80px 80px;gap:8px;align-items:center;padding:.6rem 1.25rem;border-bottom:1px solid var(--border);font-size:13px}
+.inv-hdr{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);background:#FAFAF8}
 .inv-row:last-child{border-bottom:none}
-.inv-row.hdr{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:.5rem 1.25rem;background:#FAFAF8}
-.inv-num{font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;border:1px solid var(--border);border-radius:7px;padding:4px 8px;text-align:right;width:100%;outline:none}
-.inv-num:focus{border-color:var(--k)}
-.remain-pill{font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;text-align:center}
-.remain-pill.ok{background:var(--kl);color:var(--k2)}
-.remain-pill.warn{background:#FAEEDA;color:#854F0B}
-.remain-pill.zero{background:#E6F1FB;color:#185FA5}
-
-/* TOAST */
-.toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(80px);background:var(--text);color:#fff;font-size:13px;font-weight:700;padding:10px 20px;border-radius:30px;z-index:999;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap}
+.inv-input{font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;border:1px solid var(--border);border-radius:7px;padding:4px 8px;text-align:right;width:100%;outline:none}
+.inv-input:focus{border-color:var(--k)}
+.remain{font-size:12px;font-weight:700;padding:3px 8px;border-radius:20px;text-align:center}
+.remain.ok{background:var(--kl);color:var(--k2)}.remain.warn{background:#FAEEDA;color:#854F0B}.remain.zero{background:#E6F1FB;color:#185FA5}
+.fi{font-family:'Nunito',sans-serif;font-size:14px;border:1px solid var(--border);border-radius:8px;padding:6px 10px;outline:none;background:white;color:var(--text)}
+.fi:focus{border-color:var(--k)}
+.toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(80px);background:var(--text);color:#fff;font-size:13px;font-weight:700;padding:10px 20px;border-radius:30px;z-index:9999;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-.toast.success{background:var(--k)}
-.toast.error{background:var(--danger)}
-
-@media(max-width:600px){
-  .main{padding:1rem}
-  .hdr{padding:.75rem 1rem}
-  .inv-row{grid-template-columns:1fr 55px 55px 55px 65px;gap:5px;padding:.5rem .75rem;font-size:12px}
-  .cat-grid{grid-template-columns:1fr 1fr;gap:.75rem;padding:.75rem}
-}
+.toast.ok{background:var(--k)}.toast.err{background:var(--danger)}
+#login-screen{position:fixed;inset:0;background:var(--bg);z-index:998;display:none;align-items:center;justify-content:center;padding:1rem}
+#login-screen.on{display:flex}
+.print-area{display:none}
+@media print{body>*{display:none!important}.print-area{display:block!important}.label-sheet{display:flex;flex-wrap:wrap}.label{border:1px solid #ddd;padding:8px;text-align:center;width:62mm;box-sizing:border-box}.label-name{font-size:10px;font-weight:700;margin-bottom:2px}.label-price{font-size:12px;font-weight:700;margin-bottom:1px}.label-owner{font-size:8px;color:#555;margin-bottom:3px}}
+@media(max-width:600px){.main{padding:1rem}.hdr{padding:.75rem 1rem}.cat-grid{grid-template-columns:1fr 1fr;gap:.75rem;padding:.75rem}.inv-hdr,.inv-row{grid-template-columns:1fr 55px 55px 55px 60px;gap:4px;padding:.5rem .75rem;font-size:11px}}
 </style>
 </head>
 <body>
 
-<header class="hdr">
-  <div style="display:flex;align-items:center;gap:10px">
-    <div>
-      <div class="logo">Bardak <span>Studio</span></div>
+<!-- LOGIN -->
+<div id="login-screen" class="on">
+  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:2rem;width:100%;max-width:360px">
+    <div style="text-align:center;margin-bottom:1.5rem">
+      <div class="logo" style="font-size:1.3rem;margin-bottom:6px">Bardak <span>Studio</span></div>
+      <div style="font-size:13px;color:var(--muted)">Войдите чтобы продолжить</div>
     </div>
-    <span class="sync-dot" id="sync-dot" title="Статус соединения"></span>
-    <span class="sync-label" id="sync-label">подключение...</span>
+    <div style="margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Email</div>
+      <input class="fi" id="login-email" type="email" placeholder="your@email.com" style="width:100%">
+    </div>
+    <div style="margin-bottom:1.25rem">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Пароль</div>
+      <input class="fi" id="login-pass" type="password" placeholder="••••••••" style="width:100%">
+    </div>
+    <button class="btn pri" id="login-btn" style="width:100%;justify-content:center;padding:10px;font-size:15px">Войти</button>
+    <div id="login-err" style="margin-top:10px;font-size:13px;color:var(--danger);text-align:center;display:none"></div>
+  </div>
+</div>
+
+<header class="hdr">
+  <div style="display:flex;align-items:center;gap:8px">
+    <div class="logo">Bardak <span>Studio</span></div>
+    <span class="sync-dot" id="sync-dot"></span>
+    <span class="sync-lbl" id="sync-lbl">...</span>
   </div>
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
     <nav class="tabs">
-      <button class="tab on" data-tab="scan">📷 Сканер</button>
-      <button class="tab" data-tab="sales">💰 Продажи</button>
-      <button class="tab" data-tab="catalog">🏷 Каталог</button>
-      <button class="tab" data-tab="inventory">📦 Склад</button>
+      <button class="tab on" onclick="goTab('scan',this)">📷 Сканер</button>
+      <button class="tab" onclick="goTab('sales',this)">💰 Продажи</button>
+      <button class="tab" onclick="goTab('catalog',this)">🏷 Каталог</button>
+      <button class="tab" onclick="goTab('inventory',this)">📦 Склад</button>
     </nav>
     <div style="display:flex;align-items:center;gap:8px">
-      <span id="current-user" style="font-size:12px;opacity:.7;white-space:nowrap"></span>
-      <button id="logout-btn" style="font-size:11px;font-weight:700;padding:5px 10px;border-radius:7px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.6);cursor:pointer">Выйти</button>
+      <span id="cur-user" style="font-size:12px;opacity:.7;white-space:nowrap"></span>
+      <button class="btn sm" onclick="doLogout()">Выйти</button>
     </div>
   </div>
 </header>
@@ -160,98 +142,77 @@ input.fi:focus,select.fi:focus{border-color:var(--k)}
 <main class="main">
 
 <!-- SCANNER -->
-<section id="sec-scan" class="section on">
+<div id="pg-scan" class="pg on">
   <div class="stats">
-    <div class="stat"><div class="stat-lbl">Выручка сегодня</div><div class="stat-val n" id="st-total">0 ₩</div></div>
-    <div class="stat"><div class="stat-lbl">Bardak Studio</div><div class="stat-val g" id="st-katya">0 ₩</div></div>
-    <div class="stat"><div class="stat-lbl">SealMary</div><div class="stat-val p" id="st-masha">0 ₩</div></div>
-    <div class="stat"><div class="stat-lbl">Продаж</div><div class="stat-val n" id="st-count">0</div></div>
+    <div class="stat"><div class="slbl">Выручка сегодня</div><div class="sval" id="st-total">0 ₩</div></div>
+    <div class="stat"><div class="slbl">Bardak Studio</div><div class="sval g" id="st-katya">0 ₩</div></div>
+    <div class="stat"><div class="slbl">SealMary</div><div class="sval p" id="st-masha">0 ₩</div></div>
+    <div class="stat"><div class="slbl">Продаж</div><div class="sval" id="st-count">0</div></div>
   </div>
   <div class="card">
     <div class="card-hd">
       <h3>Сканер штрихкода</h3>
-      <button class="btn green" id="scan-toggle-btn" onclick="toggleScanner()">▶ Запустить камеру</button>
+      <button class="btn grn" id="scan-btn" onclick="toggleScanner()">▶ Запустить камеру</button>
     </div>
-    <div style="padding:1.25rem">
-      <div class="scanner-wrap">
-        <div id="scanner-box">
-          <div style="color:#666;font-size:13px;text-align:center;padding:2rem;line-height:1.6">
-            Нажмите «Запустить камеру»<br>и наведите на штрихкод
-          </div>
-        </div>
-        <div class="scan-overlay" id="scan-overlay" style="display:none">
-          <div class="scan-frame"><div class="scan-line"></div></div>
-        </div>
+    <div style="padding:1.25rem;position:relative">
+      <div id="scanner-box">
+        <div id="scanner-placeholder" style="color:#666;font-size:13px;text-align:center;padding:2rem;line-height:1.8">Нажмите «Запустить камеру»<br>и наведите на штрихкод</div>
       </div>
-      <div class="scan-status" id="scan-status"></div>
-
+      <div class="scan-overlay" id="scan-overlay"><div class="scan-frame"><div class="scan-line"></div></div></div>
+      <div id="scan-status" style="margin-top:.75rem;text-align:center;font-size:13px;font-weight:600;color:var(--muted)"></div>
       <div class="scan-result" id="scan-result">
-        <div class="scan-result-name" id="sr-name">—</div>
-        <div class="scan-result-meta">
-          <span id="sr-badge" class="badge k">Bardak Studio</span>
-          <span id="sr-price" style="font-family:'Unbounded',sans-serif;font-size:1.1rem;font-weight:700;color:var(--k)">0 ₩</span>
+        <div style="font-family:'Unbounded',sans-serif;font-size:1rem;font-weight:600;margin-bottom:6px" id="sr-name">—</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+          <span class="bdg k" id="sr-owner">Bardak Studio</span>
+          <span style="font-family:'Unbounded',sans-serif;font-size:1.1rem;font-weight:700;color:var(--k)" id="sr-price">0 ₩</span>
         </div>
         <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Тип оплаты:</div>
-        <div class="pay-btns">
-          <button class="pay-btn selected" onclick="selectPay(this,'cash')">💵 Наличка</button>
-          <button class="pay-btn" onclick="selectPay(this,'card')">💳 Карта</button>
-          <button class="pay-btn" onclick="selectPay(this,'tonjan')">📱 Тонжан</button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="pay-btn on" onclick="setPay(this,'cash')">💵 Наличка</button>
+          <button class="pay-btn" onclick="setPay(this,'card')">💳 Карта</button>
+          <button class="pay-btn" onclick="setPay(this,'tonjan')">📱 Тонжан</button>
         </div>
         <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn green" onclick="confirmSale()" style="flex:1;justify-content:center;font-size:15px;padding:10px">✓ Зафиксировать</button>
+          <button class="btn grn" onclick="confirmSale()" style="flex:1;justify-content:center;font-size:15px;padding:10px">✓ Зафиксировать</button>
           <button class="btn" onclick="cancelScan()">✕ Отмена</button>
         </div>
       </div>
-
       <div style="margin-top:1rem;padding-top:1rem;border-top:1px dashed var(--border)">
         <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Добавить вручную:</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <select class="fi" id="manual-product" style="flex:1;min-width:150px">
-            <option value="">— выбрать товар —</option>
-          </select>
+          <select class="fi" id="manual-sel" style="flex:1;min-width:150px"><option value="">— выбрать товар —</option></select>
           <select class="fi" id="manual-pay">
             <option value="cash">💵 Наличка</option>
             <option value="card">💳 Карта</option>
             <option value="tonjan">📱 Тонжан</option>
           </select>
-          <button class="btn primary" onclick="addManual()">+ Добавить</button>
+          <button class="btn pri" onclick="addManual()">+ Добавить</button>
         </div>
       </div>
     </div>
   </div>
-
   <div class="card">
-    <div class="card-hd">
-      <h3>Продажи — сегодня</h3>
-      <button class="btn sm danger" onclick="clearToday()">Очистить сегодня</button>
-    </div>
-    <div class="sales-log" id="sales-log">
-      <div class="empty-state">Пока нет продаж</div>
-    </div>
+    <div class="card-hd"><h3>Продажи сегодня</h3><button class="btn sm red" onclick="clearToday()">Очистить</button></div>
+    <div class="log" id="today-log"><div class="empty">Пока нет продаж</div></div>
   </div>
-</section>
+</div>
 
 <!-- SALES -->
-<section id="sec-sales" class="section">
+<div id="pg-sales" class="pg">
   <div class="stats">
-    <div class="stat"><div class="stat-lbl">Всего выручка</div><div class="stat-val n" id="h-total">0 ₩</div></div>
-    <div class="stat"><div class="stat-lbl">Bardak Studio</div><div class="stat-val g" id="h-katya">0 ₩</div></div>
-    <div class="stat"><div class="stat-lbl">SealMary</div><div class="stat-val p" id="h-masha">0 ₩</div></div>
-    <div class="stat"><div class="stat-lbl">Всего продаж</div><div class="stat-val n" id="h-count">0</div></div>
+    <div class="stat"><div class="slbl">Всего выручка</div><div class="sval" id="h-total">0 ₩</div></div>
+    <div class="stat"><div class="slbl">Bardak Studio</div><div class="sval g" id="h-katya">0 ₩</div></div>
+    <div class="stat"><div class="slbl">SealMary</div><div class="sval p" id="h-masha">0 ₩</div></div>
+    <div class="stat"><div class="slbl">Продаж</div><div class="sval" id="h-count">0</div></div>
   </div>
   <div class="card">
-    <div class="card-hd">
-      <h3>Все продажи</h3>
-      <button class="btn sm" onclick="exportCSV()">📥 CSV</button>
-    </div>
-    <div class="sales-log" id="all-sales-log" style="max-height:500px">
-      <div class="empty-state">Нет продаж</div>
-    </div>
+    <div class="card-hd"><h3>Все продажи</h3><button class="btn sm" onclick="exportCSV()">📥 CSV</button></div>
+    <div class="log" id="all-log" style="max-height:500px"><div class="empty">Нет продаж</div></div>
   </div>
-</section>
+</div>
 
 <!-- CATALOG -->
-<section id="sec-catalog" class="section">
+<div id="pg-catalog" class="pg">
   <div class="card">
     <div class="card-hd"><h3>Добавить товар</h3></div>
     <div style="padding:1rem 1.25rem;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
@@ -270,648 +231,416 @@ input.fi:focus,select.fi:focus{border-color:var(--k)}
           <option value="masha">SealMary</option>
         </select>
       </div>
-      <button class="btn primary" onclick="addProduct()">+ Добавить</button>
+      <button class="btn pri" onclick="addProduct()">+ Добавить</button>
     </div>
   </div>
   <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
-    <button class="btn" onclick="printLabels()">🖨 Печать этикеток</button>
+    <button class="btn" onclick="printLabels()">🖨 Этикетки</button>
     <button class="btn sm" id="f-all" onclick="filterCat('all')" style="background:var(--text);color:#fff;border-color:var(--text)">Все</button>
-    <button class="btn sm badge k" id="f-katya" onclick="filterCat('katya')">Bardak Studio</button>
-    <button class="btn sm badge m" id="f-masha" onclick="filterCat('masha')">SealMary</button>
-    <button class="btn sm danger" onclick="resetAllProducts()" style="margin-left:auto">↺ Загрузить все товары</button>
+    <button class="btn sm bdg k" id="f-katya" onclick="filterCat('katya')">Bardak Studio</button>
+    <button class="btn sm bdg m" id="f-masha" onclick="filterCat('masha')">SealMary</button>
+    <button class="btn sm red" onclick="loadDefaultProducts()" style="margin-left:auto">↺ Загрузить все товары</button>
   </div>
-  <div class="cat-grid" id="cat-grid"></div>
-</section>
+  <div class="cat-grid" id="cat-grid"><div class="empty" style="grid-column:1/-1">Загрузка...</div></div>
+</div>
 
 <!-- INVENTORY -->
-<section id="sec-inventory" class="section">
+<div id="pg-inventory" class="pg">
   <div class="stats" id="inv-stats"></div>
   <div class="card">
-    <div class="card-hd">
-      <h3>Остатки</h3>
-      <button class="btn sm" onclick="resetSold()">↺ Сбросить продано</button>
-    </div>
-    <div class="inv-row hdr">
-      <span>Товар</span>
-      <span style="text-align:right">Цена</span>
-      <span style="text-align:center">Привезли</span>
-      <span style="text-align:center">Продано</span>
-      <span style="text-align:center">Остаток</span>
-    </div>
+    <div class="card-hd"><h3>Остатки</h3><button class="btn sm" onclick="resetSold()">↺ Сбросить продано</button></div>
+    <div class="inv-hdr"><span>Товар</span><span style="text-align:right">Цена</span><span style="text-align:center">Привезли</span><span style="text-align:center">Продано</span><span style="text-align:center">Остаток</span></div>
     <div id="inv-body"></div>
-  </div>
-</section>
-
-</main>
-
-<div class="toast" id="toast"></div>
-<div class="print-area" id="print-area"></div>
-
-<!-- LOGIN SCREEN -->
-<div id="login-screen" style="position:fixed;inset:0;background:var(--bg);z-index:999;display:none;align-items:center;justify-content:center;padding:1rem">
-  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:2rem;width:100%;max-width:360px">
-    <div style="text-align:center;margin-bottom:1.5rem">
-      <div class="logo" style="font-size:1.3rem;margin-bottom:4px">Bardak <span>Studio</span></div>
-      <div style="font-size:13px;color:var(--muted)">Войдите чтобы продолжить</div>
-    </div>
-    <div style="margin-bottom:10px">
-      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Email</div>
-      <input class="fi" id="login-email" type="email" placeholder="your@email.com" style="width:100%">
-    </div>
-    <div style="margin-bottom:1.25rem">
-      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Пароль</div>
-      <input class="fi" id="login-password" type="password" placeholder="••••••••" style="width:100%">
-    </div>
-    <button class="btn primary" id="login-btn" style="width:100%;justify-content:center;padding:10px;font-size:15px">Войти</button>
-    <div id="login-error" style="margin-top:10px;font-size:13px;color:var(--danger);text-align:center;display:none"></div>
   </div>
 </div>
 
-<!-- FIREBASE -->
-<script type="module">
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getDatabase, ref, set, push, remove, onValue, serverTimestamp }
-  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
-  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+</main>
+<div class="toast" id="toast"></div>
+<div class="print-area" id="print-area"></div>
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAWZJ0W0bCpnDh_KONfsFZ6x3JqWGA8_gk",
-  authDomain: "bardakstudio250697.firebaseapp.com",
-  databaseURL: "https://bardakstudio250697-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "bardakstudio250697",
-  storageBucket: "bardakstudio250697.firebasestorage.app",
-  messagingSenderId: "691882841885",
-  appId: "1:691882841885:web:569ede621e52eecb8673f4"
-};
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyAWZJ0W0bCpnDh_KONfsFZ6x3JqWGA8_gk",
+  authDomain:"bardakstudio250697.firebaseapp.com",
+  databaseURL:"https://bardakstudio250697-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"bardakstudio250697",
+  storageBucket:"bardakstudio250697.firebasestorage.app",
+  messagingSenderId:"691882841885",
+  appId:"1:691882841885:web:569ede621e52eecb8673f4"
+});
+var auth = firebase.auth();
+var db = firebase.database();
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-const auth = getAuth(app);
+var products=[], sales=[], scannerRunning=false, scannedProduct=null, selectedPay='cash', catFilter='all';
 
-// ---- AUTH ----
-const userNames = {
-  'feasillhin@gmail.com': 'SealMary 🦭',
-  'bardakstudio.art@gmail.com': 'Bardak Studio 🎨',
-};
+var USER_NAMES={'feasillhin@gmail.com':'SealMary 🦭','bardakstudio.art@gmail.com':'Bardak Studio 🎨'};
 
-onAuthStateChanged(auth, user => {
-  if (user) {
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('current-user').textContent = userNames[user.email] || user.email;
-    initApp();
+var DEFAULTS=[
+  {id:'P001',name:'Брелок (круглый)',price:3000,owner:'katya'},
+  {id:'P002',name:'Брелок Слова',price:3000,owner:'katya'},
+  {id:'P003',name:'Мистэри Пэк',price:7000,owner:'katya'},
+  {id:'P004',name:'Стикер 1 шт',price:1500,owner:'katya'},
+  {id:'P005',name:'Стикеры 3 шт',price:5000,owner:'katya'},
+  {id:'P006',name:'Стикеры 5 шт',price:7000,owner:'katya'},
+  {id:'P007',name:'Карточка Слова',price:1500,owner:'katya'},
+  {id:'P008',name:'Магнит Слова',price:4000,owner:'katya'},
+  {id:'P009',name:'Магнитик (круглый)',price:4000,owner:'katya'},
+  {id:'P010',name:'Значок Слова',price:3000,owner:'katya'},
+  {id:'P011',name:'Браслет (стекло)',price:5000,owner:'masha'},
+  {id:'P012',name:'Браслет (камень)',price:10000,owner:'masha'},
+  {id:'P013',name:'Браслет (камень/спираль)',price:13000,owner:'masha'},
+  {id:'P014',name:'Браслет (пружина)',price:7000,owner:'masha'},
+  {id:'P015',name:'Шпилька',price:6000,owner:'masha'},
+  {id:'P016',name:'Заколка Бабочка',price:2000,owner:'masha'},
+  {id:'P017',name:'Заколка Рыбка',price:4000,owner:'masha'},
+  {id:'P018',name:'Ожерелье',price:12000,owner:'masha'},
+  {id:'P019',name:'Тарелка Ракушка',price:6000,owner:'masha'},
+  {id:'P020',name:'Ловец солнца',price:5000,owner:'masha'},
+  {id:'P021',name:'Серьги (камень)',price:7000,owner:'masha'},
+  {id:'P022',name:'Серьги (эпоксид)',price:5000,owner:'masha'},
+  {id:'P023',name:'Серьги (Сакура)',price:6000,owner:'masha'},
+  {id:'P024',name:'Серьги (бабочки)',price:3000,owner:'masha'},
+  {id:'P025',name:'Брелок Тюлень',price:1000,owner:'masha'},
+  {id:'P026',name:'Брелок Дерпи',price:3000,owner:'masha'},
+  {id:'P027',name:'Магнит Черепашка',price:6000,owner:'masha'}
+];
+
+function fmt(n){return Math.round(n).toLocaleString('ru-RU')+' ₩';}
+function ownerLabel(o){return o==='katya'?'Bardak Studio':'SealMary';}
+function payIcon(p){return p==='cash'?'💵':p==='card'?'💳':'📱';}
+function pad(n){return ('0'+n).slice(-2);}
+function toast(msg,type){
+  var t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast show'+(type?' '+type:'');
+  clearTimeout(t._timer); t._timer=setTimeout(function(){t.className='toast';},2200);
+}
+function setSyncStatus(s){
+  document.getElementById('sync-dot').className='sync-dot '+s;
+  document.getElementById('sync-lbl').textContent=s==='ok'?'онлайн':s==='spin'?'синхронизация...':s==='err'?'ошибка':'...';
+}
+
+// AUTH
+auth.onAuthStateChanged(function(user){
+  if(user){
+    document.getElementById('login-screen').classList.remove('on');
+    document.getElementById('cur-user').textContent=USER_NAMES[user.email]||user.email;
+    startListeners();
   } else {
-    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('login-screen').classList.add('on');
   }
 });
-
-// ---- LOGIN ----
-async function doLogin() {
-  const email = document.getElementById('login-email').value.trim();
-  const pass = document.getElementById('login-password').value;
-  const errEl = document.getElementById('login-error');
-  const btn = document.getElementById('login-btn');
-  errEl.style.display = 'none';
-  btn.textContent = 'Входим...';
-  btn.disabled = true;
-  try {
-    await signInWithEmailAndPassword(auth, email, pass);
-  } catch(e) {
-    errEl.textContent = 'Неверный email или пароль';
-    errEl.style.display = 'block';
-    btn.textContent = 'Войти';
-    btn.disabled = false;
-  }
+function doLogin(){
+  var email=document.getElementById('login-email').value.trim();
+  var pass=document.getElementById('login-pass').value;
+  var errEl=document.getElementById('login-err');
+  var btn=document.getElementById('login-btn');
+  errEl.style.display='none'; btn.textContent='Входим...'; btn.disabled=true;
+  auth.signInWithEmailAndPassword(email,pass).catch(function(){
+    errEl.textContent='Неверный email или пароль';
+    errEl.style.display='block'; btn.textContent='Войти'; btn.disabled=false;
+  });
 }
-document.getElementById('login-btn').addEventListener('click', doLogin);
-document.getElementById('login-email').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
-document.getElementById('login-password').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
-document.getElementById('logout-btn').addEventListener('click', async () => {
-  if (confirm('Выйти из аккаунта?')) await signOut(auth);
-});
+function doLogout(){if(confirm('Выйти?'))auth.signOut();}
+document.getElementById('login-btn').addEventListener('click',doLogin);
+document.getElementById('login-email').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
+document.getElementById('login-pass').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 
-// ---- STATE ----
-let products = [];
-let sales = [];
-let scannerRunning = false;
-let scannedProduct = null;
-let selectedPay = 'cash';
-let catFilter = 'all';
-let currentSection = 'scan';
-
-// ---- SYNC STATUS ----
-function setSyncStatus(status) {
-  const dot = document.getElementById('sync-dot');
-  const lbl = document.getElementById('sync-label');
-  dot.className = 'sync-dot ' + status;
-  lbl.textContent = status === 'ok' ? 'онлайн' : status === 'syncing' ? 'синхронизация...' : status === 'err' ? 'ошибка' : 'подключение...';
+// LISTENERS
+function startListeners(){
+  setSyncStatus('spin');
+  db.ref('products').on('value',function(snap){
+    products=[];
+    snap.forEach(function(c){products.push(Object.assign({fbKey:c.key},c.val()));});
+    updateManualSel(); renderCatalog(); renderInventory(); setSyncStatus('ok');
+  },function(){setSyncStatus('err');});
+  db.ref('sales').on('value',function(snap){
+    sales=[];
+    snap.forEach(function(c){sales.push(Object.assign({fbKey:c.key},c.val()));});
+    sales.sort(function(a,b){return(b.ts||0)-(a.ts||0);});
+    updateScanStats(); renderTodayLog(); renderAllSales(); renderInventory();
+  },function(){setSyncStatus('err');});
 }
 
-// ---- TOAST ----
-function toast(msg, type='') {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.className = 'toast show ' + type;
-  setTimeout(() => t.className = 'toast', 2200);
+// TABS
+function goTab(name,btn){
+  document.querySelectorAll('.pg').forEach(function(el){el.classList.remove('on');});
+  document.querySelectorAll('.tab').forEach(function(el){el.classList.remove('on');});
+  document.getElementById('pg-'+name).classList.add('on');
+  if(btn)btn.classList.add('on');
 }
 
-// ---- HELPERS ----
-function fmt(n) { return Math.round(n).toLocaleString('ru-RU') + ' ₩'; }
-function ownerLabel(o) { return o === 'katya' ? 'Bardak Studio' : 'SealMary'; }
-function payIcon(p) { return p === 'cash' ? '💵' : p === 'card' ? '💳' : '📱'; }
-
-// ---- INIT APP (called after login) ----
-function initApp() {
-
-// ---- FIREBASE: PRODUCTS ----
-onValue(ref(db, 'products'), snap => {
-  products = [];
-  snap.forEach(child => products.push({ fbKey: child.key, ...child.val() }));
-  if (products.length === 0) initDefaultProducts();
-  updateManualSelect();
-  renderCatalog();
-  renderInventory();
-  setSyncStatus('ok');
-}, err => setSyncStatus('err'));
-
-async function saveProduct(p) {
-  setSyncStatus('syncing');
-  if (p.fbKey) {
-    await set(ref(db, 'products/' + p.fbKey), { id:p.id, name:p.name, price:p.price, owner:p.owner, brought:p.brought||0, sold:p.sold||0 });
-  } else {
-    const r = await push(ref(db, 'products'), { id:p.id, name:p.name, price:p.price, owner:p.owner, brought:p.brought||0, sold:p.sold||0 });
-    p.fbKey = r.key;
-  }
-  setSyncStatus('ok');
-}
-
-async function deleteProductFb(fbKey) {
-  setSyncStatus('syncing');
-  await remove(ref(db, 'products/' + fbKey));
-  setSyncStatus('ok');
-}
-
-// ---- FIREBASE: SALES ----
-onValue(ref(db, 'sales'), snap => {
-  sales = [];
-  snap.forEach(child => sales.push({ fbKey: child.key, ...child.val() }));
-  sales.sort((a,b) => (b.ts||0) - (a.ts||0));
-  updateScanStats();
-  renderSalesLog();
-  renderAllSales();
-  renderInventory();
-  setSyncStatus('ok');
-}, err => setSyncStatus('err'));
-
-async function pushSale(s) {
-  setSyncStatus('syncing');
-  await push(ref(db, 'sales'), s);
-  setSyncStatus('ok');
-}
-
-async function deleteSaleFb(fbKey) {
-  setSyncStatus('syncing');
-  await remove(ref(db, 'sales/' + fbKey));
-  setSyncStatus('ok');
-}
-
-// ---- DEFAULT PRODUCTS ----
-async function resetAllProducts() {
-  if (!confirm('Удалить все товары и загрузить стандартные 27? Это сотрёт текущий каталог!')) return;
-  await set(ref(db, 'products'), null);
-  const defaults = [
-    {name:'Брелок (круглый)',price:3000,owner:'katya'},
-    {name:'Брелок Слова',price:3000,owner:'katya'},
-    {name:'Мистэри Пэк',price:7000,owner:'katya'},
-    {name:'Стикер 1 шт',price:1500,owner:'katya'},
-    {name:'Стикеры 3 шт',price:5000,owner:'katya'},
-    {name:'Стикеры 5 шт',price:7000,owner:'katya'},
-    {name:'Карточка Слова',price:1500,owner:'katya'},
-    {name:'Магнит Слова',price:4000,owner:'katya'},
-    {name:'Магнитик (круглый)',price:4000,owner:'katya'},
-    {name:'Значок Слова',price:3000,owner:'katya'},
-    {name:'Браслет (стекло)',price:5000,owner:'masha'},
-    {name:'Браслет (камень)',price:10000,owner:'masha'},
-    {name:'Браслет (камень/спираль)',price:13000,owner:'masha'},
-    {name:'Браслет (пружина)',price:7000,owner:'masha'},
-    {name:'Шпилька',price:6000,owner:'masha'},
-    {name:'Заколка Бабочка',price:2000,owner:'masha'},
-    {name:'Заколка Рыбка',price:4000,owner:'masha'},
-    {name:'Ожерелье',price:12000,owner:'masha'},
-    {name:'Тарелка Ракушка',price:6000,owner:'masha'},
-    {name:'Ловец солнца',price:5000,owner:'masha'},
-    {name:'Серьги (камень)',price:7000,owner:'masha'},
-    {name:'Серьги (эпоксид)',price:5000,owner:'masha'},
-    {name:'Серьги (Сакура)',price:6000,owner:'masha'},
-    {name:'Серьги (бабочки)',price:3000,owner:'masha'},
-    {name:'Брелок Тюлень',price:1000,owner:'masha'},
-    {name:'Брелок Дерпи',price:3000,owner:'masha'},
-    {name:'Магнит Черепашка',price:6000,owner:'masha'},
-  ];
-  for (let i = 0; i < defaults.length; i++) {
-    const id = 'P' + String(i+1).padStart(3,'0');
-    await push(ref(db, 'products'), { id, ...defaults[i], brought:0, sold:0 });
-  }
-  toast('✓ Все 27 товаров загружены!', 'success');
-}
-window.resetAllProducts = resetAllProducts;
-
-function initDefaultProducts() {} // пусто — теперь только через кнопку
-
-// ---- TABS ----
-function go(name, btn) {
-  currentSection = name;
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('on'));
-  document.querySelectorAll('.tab').forEach(b => b.classList.remove('on'));
-  document.getElementById('sec-' + name).classList.add('on');
-  if (btn) btn.classList.add('on');
-  if (name === 'catalog') renderCatalog();
-  if (name === 'inventory') renderInventory();
-  if (name === 'sales') renderAllSales();
-  if (name === 'scan') { updateManualSelect(); updateScanStats(); renderSalesLog(); }
-}
-window.go = go;
-
-// ---- SCANNER ----
-function toggleScanner() {
-  scannerRunning ? stopScanner() : startScanner();
-}
-window.toggleScanner = toggleScanner;
-
-function startScanner() {
-  const box = document.getElementById('scanner-box');
-  box.innerHTML = '';
-  document.getElementById('scan-overlay').style.display = 'flex';
-  document.getElementById('scan-status').textContent = 'Наводите камеру на штрихкод...';
-  document.getElementById('scan-toggle-btn').textContent = '⏹ Остановить';
+// SCANNER
+function toggleScanner(){scannerRunning?stopScanner():startScanner();}
+function startScanner(){
+  var box=document.getElementById('scanner-box');
+  box.innerHTML='';
+  document.getElementById('scan-overlay').classList.add('on');
+  document.getElementById('scan-status').textContent='Наводите камеру на штрихкод...';
+  document.getElementById('scan-btn').textContent='⏹ Остановить';
   Quagga.init({
-    inputStream: { name:'Live', type:'LiveStream', target:box,
-      constraints:{ facingMode:'environment', width:640, height:360 } },
-    decoder: { readers:['code_128_reader','ean_reader'] },
-    locate: true
-  }, err => {
-    if (err) {
-      document.getElementById('scan-status').textContent = '⚠️ Нет доступа к камере — используйте ручной ввод';
-      document.getElementById('scan-overlay').style.display = 'none';
-      document.getElementById('scan-toggle-btn').textContent = '▶ Запустить камеру';
+    inputStream:{name:'Live',type:'LiveStream',target:box,constraints:{facingMode:'environment',width:640,height:360}},
+    decoder:{readers:['code_128_reader','ean_reader']},locate:true
+  },function(err){
+    if(err){
+      document.getElementById('scan-status').textContent='⚠️ Нет доступа к камере';
+      document.getElementById('scan-overlay').classList.remove('on');
+      document.getElementById('scan-btn').textContent='▶ Запустить камеру';
       return;
     }
-    Quagga.start();
-    scannerRunning = true;
+    Quagga.start(); scannerRunning=true;
   });
-  Quagga.onDetected(data => {
-    const code = data.codeResult.code;
-    const product = products.find(p => p.id === code);
-    if (product) { stopScanner(); showScanResult(product); }
-    else document.getElementById('scan-status').textContent = '⚠️ Не найдено: ' + code;
+  Quagga.onDetected(function(data){
+    var code=data.codeResult.code;
+    var p=products.find(function(x){return x.id===code;});
+    if(p){stopScanner();showScanResult(p);}
+    else document.getElementById('scan-status').textContent='⚠️ Не найдено: '+code;
   });
 }
-
-function stopScanner() {
-  if (scannerRunning) { Quagga.stop(); scannerRunning = false; }
-  document.getElementById('scanner-box').innerHTML =
-    '<div style="color:#666;font-size:13px;text-align:center;padding:2rem;line-height:1.6">Нажмите «Запустить камеру»<br>и наведите на штрихкод</div>';
-  document.getElementById('scan-overlay').style.display = 'none';
-  document.getElementById('scan-toggle-btn').textContent = '▶ Запустить камеру';
-  document.getElementById('scan-status').textContent = '';
+function stopScanner(){
+  if(scannerRunning){Quagga.stop();scannerRunning=false;}
+  document.getElementById('scanner-box').innerHTML='<div id="scanner-placeholder" style="color:#666;font-size:13px;text-align:center;padding:2rem;line-height:1.8">Нажмите «Запустить камеру»<br>и наведите на штрихкод</div>';
+  document.getElementById('scan-overlay').classList.remove('on');
+  document.getElementById('scan-btn').textContent='▶ Запустить камеру';
+  document.getElementById('scan-status').textContent='';
 }
-
-function showScanResult(product) {
-  scannedProduct = product;
-  document.getElementById('sr-name').textContent = product.name;
-  document.getElementById('sr-price').textContent = fmt(product.price);
-  const b = document.getElementById('sr-badge');
-  b.textContent = ownerLabel(product.owner);
-  b.className = 'badge ' + product.owner[0];
+function showScanResult(p){
+  scannedProduct=p;
+  document.getElementById('sr-name').textContent=p.name;
+  document.getElementById('sr-price').textContent=fmt(p.price);
+  var ob=document.getElementById('sr-owner');
+  ob.textContent=ownerLabel(p.owner); ob.className='bdg '+p.owner[0];
   document.getElementById('scan-result').classList.add('on');
-  document.getElementById('scan-status').textContent = '✓ Найдено!';
-  document.querySelectorAll('.pay-btn').forEach((b,i) => b.classList.toggle('selected', i===0));
-  selectedPay = 'cash';
+  document.getElementById('scan-status').textContent='✓ Найдено!';
+  document.querySelectorAll('.pay-btn').forEach(function(b,i){b.classList.toggle('on',i===0);});
+  selectedPay='cash';
 }
-
-function selectPay(btn, pay) {
-  document.querySelectorAll('.pay-btn').forEach(b => b.classList.remove('selected'));
-  btn.classList.add('selected');
-  selectedPay = pay;
+function setPay(btn,pay){
+  document.querySelectorAll('.pay-btn').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on'); selectedPay=pay;
 }
-window.selectPay = selectPay;
-
-async function confirmSale() {
-  if (!scannedProduct) return;
-  await addSale(scannedProduct, selectedPay);
+function confirmSale(){
+  if(!scannedProduct)return;
+  addSale(scannedProduct,selectedPay);
+  toast('✓ '+scannedProduct.name+' — '+fmt(scannedProduct.price),'ok');
   cancelScan();
-  toast('✓ ' + scannedProduct.name + ' — ' + fmt(scannedProduct.price), 'success');
 }
-window.confirmSale = confirmSale;
-
-function cancelScan() {
-  scannedProduct = null;
+function cancelScan(){
+  scannedProduct=null;
   document.getElementById('scan-result').classList.remove('on');
-  document.getElementById('scan-status').textContent = '';
+  document.getElementById('scan-status').textContent='';
 }
-window.cancelScan = cancelScan;
-
-async function addSale(product, pay) {
-  const sale = {
-    productId: product.id,
-    name: product.name,
-    owner: product.owner,
-    price: product.price,
-    pay,
-    ts: Date.now(),
-    time: new Date().toISOString()
-  };
-  await pushSale(sale);
-  // update sold count
-  const p = products.find(x => x.id === product.id);
-  if (p) { p.sold = (p.sold||0) + 1; await saveProduct(p); }
+function addSale(p,pay){
+  db.ref('sales').push({productId:p.id,name:p.name,owner:p.owner,price:p.price,pay:pay,ts:Date.now(),time:new Date().toISOString()});
+  var prod=products.find(function(x){return x.id===p.id;});
+  if(prod){prod.sold=(prod.sold||0)+1;db.ref('products/'+prod.fbKey).update({sold:prod.sold});}
 }
-
-async function addManual() {
-  const sel = document.getElementById('manual-product');
-  const pay = document.getElementById('manual-pay').value;
-  const id = sel.value;
-  if (!id) return;
-  const p = products.find(x => x.id === id);
-  if (p) {
-    await addSale(p, pay);
-    sel.value = '';
-    toast('✓ ' + p.name, 'success');
-  }
+function addManual(){
+  var id=document.getElementById('manual-sel').value;
+  var pay=document.getElementById('manual-pay').value;
+  if(!id)return;
+  var p=products.find(function(x){return x.id===id;});
+  if(p){addSale(p,pay);document.getElementById('manual-sel').value='';toast('✓ '+p.name,'ok');}
 }
-window.addManual = addManual;
-
-// ---- STATS ----
-function updateScanStats() {
-  const today = new Date().toDateString();
-  let total=0, katya=0, masha=0, count=0;
-  sales.filter(s => new Date(s.time||s.ts).toDateString() === today).forEach(s => {
-    total += s.price; count++;
-    if (s.owner === 'katya') katya += s.price; else masha += s.price;
-  });
-  document.getElementById('st-total').textContent = fmt(total);
-  document.getElementById('st-katya').textContent = fmt(katya);
-  document.getElementById('st-masha').textContent = fmt(masha);
-  document.getElementById('st-count').textContent = count;
-}
-
-// ---- SALES LOG ----
-function renderSalesLog() {
-  const log = document.getElementById('sales-log');
-  const today = new Date().toDateString();
-  const list = sales.filter(s => new Date(s.time||s.ts).toDateString() === today);
-  if (!list.length) { log.innerHTML = '<div class="empty-state">Пока нет продаж</div>'; return; }
-  log.innerHTML = list.map(s => {
-    const t = new Date(s.time||s.ts);
-    const time = t.getHours().toString().padStart(2,'0') + ':' + t.getMinutes().toString().padStart(2,'0');
-    return `<div class="log-row">
-      <span class="badge ${s.owner[0]}">${s.owner==='katya'?'BS':'SM'}</span>
-      <span class="log-product">${s.name}</span>
-      <span style="font-size:11px;color:var(--muted)">${payIcon(s.pay)} ${time}</span>
-      <span class="log-amount" style="color:${s.owner==='katya'?'var(--k)':'var(--m)'}">${fmt(s.price)}</span>
-      <button class="log-del" onclick="deleteSale('${s.fbKey}','${s.productId}')">✕</button>
-    </div>`;
-  }).join('');
-}
-
-async function deleteSale(fbKey, productId) {
-  const s = sales.find(x => x.fbKey === fbKey);
-  if (!s) return;
-  await deleteSaleFb(fbKey);
-  const p = products.find(x => x.id === productId);
-  if (p && p.sold > 0) { p.sold--; await saveProduct(p); }
-  toast('Продажа удалена');
-}
-window.deleteSale = deleteSale;
-
-async function clearToday() {
-  if (!confirm('Удалить все продажи за сегодня?')) return;
-  const today = new Date().toDateString();
-  const toDelete = sales.filter(s => new Date(s.time||s.ts).toDateString() === today);
-  for (const s of toDelete) {
-    await deleteSaleFb(s.fbKey);
-    const p = products.find(x => x.id === s.productId);
-    if (p && p.sold > 0) { p.sold--; await saveProduct(p); }
-  }
-}
-window.clearToday = clearToday;
-
-// ---- ALL SALES ----
-function renderAllSales() {
-  let total=0, katya=0, masha=0;
-  sales.forEach(s => {
-    total += s.price;
-    if (s.owner === 'katya') katya += s.price; else masha += s.price;
-  });
-  document.getElementById('h-total').textContent = fmt(total);
-  document.getElementById('h-katya').textContent = fmt(katya);
-  document.getElementById('h-masha').textContent = fmt(masha);
-  document.getElementById('h-count').textContent = sales.length;
-  const log = document.getElementById('all-sales-log');
-  if (!sales.length) { log.innerHTML = '<div class="empty-state">Нет продаж</div>'; return; }
-  log.innerHTML = sales.map(s => {
-    const t = new Date(s.time||s.ts);
-    const dt = t.toLocaleDateString('ru-RU') + ' ' + t.getHours().toString().padStart(2,'0') + ':' + t.getMinutes().toString().padStart(2,'0');
-    return `<div class="log-row">
-      <span class="badge ${s.owner[0]}">${s.owner==='katya'?'BS':'SM'}</span>
-      <span class="log-product">${s.name}</span>
-      <span style="font-size:11px;color:var(--muted)">${payIcon(s.pay)} ${dt}</span>
-      <span class="log-amount" style="color:${s.owner==='katya'?'var(--k)':'var(--m)'}">${fmt(s.price)}</span>
-      <button class="log-del" onclick="deleteSale('${s.fbKey}','${s.productId}');renderAllSales()">✕</button>
-    </div>`;
-  }).join('');
-}
-window.renderAllSales = renderAllSales;
-
-function exportCSV() {
-  let csv = '\uFEFFДата,Время,Товар,Владелец,Цена,Оплата\n';
-  [...sales].reverse().forEach(s => {
-    const t = new Date(s.time||s.ts);
-    const pay = s.pay==='cash'?'Наличка':s.pay==='card'?'Карта':'Тонжан';
-    csv += `${t.toLocaleDateString('ru-RU')},${t.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})},"${s.name}",${ownerLabel(s.owner)},${s.price},${pay}\n`;
-  });
-  const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = 'bardak_' + new Date().toLocaleDateString('ru-RU').replace(/\./g,'-') + '.csv';
-  a.click();
-}
-window.exportCSV = exportCSV;
-
-// ---- CATALOG ----
-async function addProduct() {
-  const name = document.getElementById('new-name').value.trim();
-  const price = parseFloat(document.getElementById('new-price').value) || 0;
-  const owner = document.getElementById('new-owner').value;
-  if (!name) return;
-  const id = 'P' + String(Date.now()).slice(-6);
-  await push(ref(db, 'products'), { id, name, price, owner, brought:0, sold:0 });
-  document.getElementById('new-name').value = '';
-  document.getElementById('new-price').value = '';
-  toast('Товар добавлен', 'success');
-}
-window.addProduct = addProduct;
-
-async function deleteProduct(fbKey) {
-  if (!confirm('Удалить товар?')) return;
-  await deleteProductFb(fbKey);
-  toast('Товар удалён');
-}
-window.deleteProduct = deleteProduct;
-
-function filterCat(f) {
-  catFilter = f;
-  ['all','katya','masha'].forEach(k => {
-    const el = document.getElementById('f-' + k);
-    if (!el) return;
-    el.style.opacity = k === f ? '1' : '0.4';
-  });
-  renderCatalog();
-}
-window.filterCat = filterCat;
-
-function renderCatalog() {
-  const grid = document.getElementById('cat-grid');
-  if (!grid) return;
-  const list = catFilter === 'all' ? products : products.filter(p => p.owner === catFilter);
-  grid.innerHTML = '';
-  if (!list.length) {
-    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1">Нет товаров. Нажмите "Загрузить все товары"</div>';
-    return;
-  }
-  list.forEach((p, i) => {
-    try {
-      const card = document.createElement('div');
-      card.className = 'cat-item';
-      const safeKey = (p.fbKey || p.id || i).replace(/[^a-zA-Z0-9]/g,'_');
-      card.innerHTML = `
-        <div class="cat-item-top">
-          <div class="cat-item-info">
-            <div class="cat-item-name">${p.name}</div>
-            <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
-              <span class="badge ${(p.owner||'katya')[0]}">${ownerLabel(p.owner)}</span>
-              <span class="cat-item-price">${fmt(p.price)}</span>
-            </div>
-            <div style="font-size:9px;color:var(--muted);margin-top:3px;font-family:monospace">${p.id}</div>
-          </div>
-          <button class="btn icon" onclick="deleteProduct('${p.fbKey}')" style="color:var(--muted);flex-shrink:0">✕</button>
-        </div>
-        <div class="cat-barcode-wrap">
-          <canvas id="bc-${safeKey}"></canvas>
-          <div class="cat-code-txt">${p.id}</div>
-        </div>`;
-      grid.appendChild(card);
-      setTimeout(() => {
-        try {
-          JsBarcode('#bc-' + safeKey, p.id || 'X', {
-            format:'CODE128', width:1.6, height:48,
-            displayValue:false, margin:4, background:'#ffffff', lineColor:'#1A1A1A'
-          });
-        } catch(e) {}
-      }, 0);
-    } catch(e) {}
-  });
-}
-
-function printLabels() {
-  const list = catFilter === 'all' ? products : products.filter(p => p.owner === catFilter);
-  const pa = document.getElementById('print-area');
-  pa.innerHTML = '<div class="label-sheet">' + list.map(p => {
-    const tmp = document.createElement('canvas');
-    try { JsBarcode(tmp, p.id, {format:'CODE128',width:1.8,height:50,displayValue:false,margin:4}); } catch(e){}
-    return `<div class="label">
-      <div class="label-name">${p.name}</div>
-      <div class="label-owner">${ownerLabel(p.owner)}</div>
-      <div class="label-price">${fmt(p.price)}</div>
-      <img src="${tmp.toDataURL('image/png')}" style="width:100%;max-width:150px">
-    </div>`;
-  }).join('') + '</div>';
-  window.print();
-}
-window.printLabels = printLabels;
-
-// ---- INVENTORY ----
-function renderInventory() {
-  let totB=0, totS=0, totR=0, totV=0;
-  products.forEach(p => {
-    totB += p.brought||0; totS += p.sold||0;
-    const r = Math.max(0,(p.brought||0)-(p.sold||0));
-    totR += r; totV += r * p.price;
-  });
-  document.getElementById('inv-stats').innerHTML = `
-    <div class="stat"><div class="stat-lbl">Привезено</div><div class="stat-val n">${totB} шт</div></div>
-    <div class="stat"><div class="stat-lbl">Продано</div><div class="stat-val g">${totS} шт</div></div>
-    <div class="stat"><div class="stat-lbl">Остаток</div><div class="stat-val n">${totR} шт</div></div>
-    <div class="stat"><div class="stat-lbl">Стоимость остатка</div><div class="stat-val n">${fmt(totV)}</div></div>`;
-
-  document.getElementById('inv-body').innerHTML = products.map(p => {
-    const remain = Math.max(0,(p.brought||0)-(p.sold||0));
-    const cls = remain===0 && p.brought>0 ? 'zero' : remain<=2 && p.brought>0 ? 'warn' : 'ok';
-    const lbl = remain===0 && p.brought>0 ? '✓ всё' : remain + ' шт';
-    return `<div class="inv-row">
-      <div>
-        <div style="font-weight:700;font-size:13px">${p.name}</div>
-        <span class="badge ${p.owner[0]}" style="font-size:9px;padding:1px 6px">${ownerLabel(p.owner)}</span>
-      </div>
-      <div style="text-align:right;font-family:'Unbounded',sans-serif;font-size:.75rem;font-weight:600;color:var(--k)">${fmt(p.price)}</div>
-      <input class="inv-num" type="number" value="${p.brought||''}" min="0" placeholder="0"
-        onchange="updateBrought('${p.fbKey}', this.value)">
-      <div style="text-align:center;font-weight:700;color:var(--muted)">${p.sold||0}</div>
-      <div class="remain-pill ${cls}">${lbl}</div>
-    </div>`;
-  }).join('');
-}
-
-async function updateBrought(fbKey, val) {
-  const p = products.find(x => x.fbKey === fbKey);
-  if (p) { p.brought = parseInt(val)||0; await saveProduct(p); }
-}
-window.updateBrought = updateBrought;
-
-async function resetSold() {
-  if (!confirm('Сбросить счётчик "продано" для всех товаров?')) return;
-  for (const p of products) { p.sold = 0; await saveProduct(p); }
-  toast('Сброшено');
-}
-window.resetSold = resetSold;
-
-function updateManualSelect() {
-  const sel = document.getElementById('manual-product');
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">— выбрать товар —</option>';
-  products.forEach(p => {
-    const opt = document.createElement('option');
-    opt.value = p.id;
-    opt.textContent = (p.owner==='katya'?'🟢 ':'🟣 ') + p.name + ' — ' + fmt(p.price);
-    if (p.id === cur) opt.selected = true;
+function updateManualSel(){
+  var sel=document.getElementById('manual-sel');
+  var cur=sel.value;
+  sel.innerHTML='<option value="">— выбрать товар —</option>';
+  products.forEach(function(p){
+    var opt=document.createElement('option');
+    opt.value=p.id;
+    opt.textContent=(p.owner==='katya'?'🟢 ':'🟣 ')+p.name+' — '+fmt(p.price);
+    if(p.id===cur)opt.selected=true;
     sel.appendChild(opt);
   });
 }
+function updateScanStats(){
+  var today=new Date().toDateString();
+  var total=0,katya=0,masha=0,count=0;
+  sales.filter(function(s){return new Date(s.time||s.ts).toDateString()===today;}).forEach(function(s){
+    total+=s.price;count++;
+    if(s.owner==='katya')katya+=s.price;else masha+=s.price;
+  });
+  document.getElementById('st-total').textContent=fmt(total);
+  document.getElementById('st-katya').textContent=fmt(katya);
+  document.getElementById('st-masha').textContent=fmt(masha);
+  document.getElementById('st-count').textContent=count;
+}
+function renderTodayLog(){
+  var log=document.getElementById('today-log');
+  var today=new Date().toDateString();
+  var list=sales.filter(function(s){return new Date(s.time||s.ts).toDateString()===today;});
+  if(!list.length){log.innerHTML='<div class="empty">Пока нет продаж</div>';return;}
+  log.innerHTML=list.map(function(s){
+    var t=new Date(s.time||s.ts);
+    var time=pad(t.getHours())+':'+pad(t.getMinutes());
+    return '<div class="log-row">'
+      +'<span class="bdg '+s.owner[0]+'">'+(s.owner==='katya'?'BS':'SM')+'</span>'
+      +'<span class="log-name">'+s.name+'</span>'
+      +'<span style="font-size:11px;color:var(--muted)">'+payIcon(s.pay)+' '+time+'</span>'
+      +'<span class="log-amt" style="color:'+(s.owner==='katya'?'var(--k)':'var(--m)')+'">'+fmt(s.price)+'</span>'
+      +'<button class="del-btn" onclick="delSale(\''+s.fbKey+'\',\''+s.productId+'\')">✕</button>'
+      +'</div>';
+  }).join('');
+}
+function delSale(fbKey,productId){
+  db.ref('sales/'+fbKey).remove();
+  var p=products.find(function(x){return x.id===productId;});
+  if(p&&p.sold>0){p.sold--;db.ref('products/'+p.fbKey).update({sold:p.sold});}
+  toast('Продажа удалена');
+}
+function clearToday(){
+  if(!confirm('Удалить все продажи за сегодня?'))return;
+  var today=new Date().toDateString();
+  sales.filter(function(s){return new Date(s.time||s.ts).toDateString()===today;}).forEach(function(s){
+    db.ref('sales/'+s.fbKey).remove();
+    var p=products.find(function(x){return x.id===s.productId;});
+    if(p&&p.sold>0){p.sold--;db.ref('products/'+p.fbKey).update({sold:p.sold});}
+  });
+}
 
-setSyncStatus('');
-} // end initApp
+// ALL SALES
+function renderAllSales(){
+  var total=0,katya=0,masha=0;
+  sales.forEach(function(s){total+=s.price;if(s.owner==='katya')katya+=s.price;else masha+=s.price;});
+  document.getElementById('h-total').textContent=fmt(total);
+  document.getElementById('h-katya').textContent=fmt(katya);
+  document.getElementById('h-masha').textContent=fmt(masha);
+  document.getElementById('h-count').textContent=sales.length;
+  var log=document.getElementById('all-log');
+  if(!sales.length){log.innerHTML='<div class="empty">Нет продаж</div>';return;}
+  log.innerHTML=sales.map(function(s){
+    var t=new Date(s.time||s.ts);
+    var dt=t.toLocaleDateString('ru-RU')+' '+pad(t.getHours())+':'+pad(t.getMinutes());
+    return '<div class="log-row">'
+      +'<span class="bdg '+s.owner[0]+'">'+(s.owner==='katya'?'BS':'SM')+'</span>'
+      +'<span class="log-name">'+s.name+'</span>'
+      +'<span style="font-size:11px;color:var(--muted)">'+payIcon(s.pay)+' '+dt+'</span>'
+      +'<span class="log-amt" style="color:'+(s.owner==='katya'?'var(--k)':'var(--m)')+'">'+fmt(s.price)+'</span>'
+      +'<button class="del-btn" onclick="delSale(\''+s.fbKey+'\',\''+s.productId+'\')">✕</button>'
+      +'</div>';
+  }).join('');
+}
+function exportCSV(){
+  var csv='\uFEFFДата,Время,Товар,Владелец,Цена,Оплата\n';
+  sales.slice().reverse().forEach(function(s){
+    var t=new Date(s.time||s.ts);
+    var pay=s.pay==='cash'?'Наличка':s.pay==='card'?'Карта':'Тонжан';
+    csv+=t.toLocaleDateString('ru-RU')+','+pad(t.getHours())+':'+pad(t.getMinutes())+',"'+s.name+'",'+ownerLabel(s.owner)+','+s.price+','+pay+'\n';
+  });
+  var a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='bardak_'+new Date().toLocaleDateString('ru-RU').replace(/\./g,'-')+'.csv';
+  a.click();
+}
 
-// ---- EXPOSE ALL FUNCTIONS TO WINDOW ----
-window.go = go;
-window.toggleScanner = toggleScanner;
-window.selectPay = selectPay;
-window.confirmSale = confirmSale;
-window.cancelScan = cancelScan;
-window.addManual = addManual;
-window.clearToday = clearToday;
-window.exportCSV = exportCSV;
-window.addProduct = addProduct;
-window.printLabels = printLabels;
-window.filterCat = filterCat;
-window.resetAllProducts = resetAllProducts;
-window.resetSold = resetSold;
-window.deleteSale = deleteSale;
-window.deleteProduct = deleteProduct;
-window.renderAllSales = renderAllSales;
-window.updateBrought = updateBrought;
+// CATALOG
+function addProduct(){
+  var name=document.getElementById('new-name').value.trim();
+  var price=parseFloat(document.getElementById('new-price').value)||0;
+  var owner=document.getElementById('new-owner').value;
+  if(!name)return;
+  var id='P'+String(Date.now()).slice(-6);
+  db.ref('products').push({id:id,name:name,price:price,owner:owner,brought:0,sold:0});
+  document.getElementById('new-name').value='';
+  document.getElementById('new-price').value='';
+  toast('Товар добавлен','ok');
+}
+function deleteProduct(fbKey){
+  if(!confirm('Удалить товар?'))return;
+  db.ref('products/'+fbKey).remove();
+  toast('Товар удалён');
+}
+function filterCat(f){
+  catFilter=f;
+  ['all','katya','masha'].forEach(function(k){
+    var el=document.getElementById('f-'+k);
+    if(el)el.style.opacity=k===f?'1':'0.45';
+  });
+  renderCatalog();
+}
+function renderCatalog(){
+  var grid=document.getElementById('cat-grid');
+  var list=catFilter==='all'?products:products.filter(function(p){return p.owner===catFilter;});
+  if(!list.length){
+    grid.innerHTML='<div class="empty" style="grid-column:1/-1">Нет товаров — нажмите «↺ Загрузить все товары»</div>';
+    return;
+  }
+  grid.innerHTML='';
+  list.forEach(function(p){
+    var key=(p.fbKey||p.id||'x').replace(/[^a-zA-Z0-9]/g,'_');
+    var div=document.createElement('div');
+    div.className='cat-card';
+    div.innerHTML='<div class="cat-top">'
+      +'<div class="cat-info">'
+      +'<div class="cat-name">'+p.name+'</div>'
+      +'<div style="display:flex;gap:6px;align-items:center;margin-top:4px">'
+      +'<span class="bdg '+(p.owner||'k')[0]+'">'+ownerLabel(p.owner)+'</span>'
+      +'<span class="cat-price">'+fmt(p.price)+'</span>'
+      +'</div>'
+      +'<div class="cat-code">'+p.id+'</div>'
+      +'</div>'
+      +'<button class="btn ic" onclick="deleteProduct(\''+p.fbKey+'\')" style="color:var(--muted);flex-shrink:0">✕</button>'
+      +'</div>'
+      +'<div class="barcode-wrap"><canvas id="bc-'+key+'"></canvas></div>';
+    grid.appendChild(div);
+    (function(k,id){
+      setTimeout(function(){
+        try{JsBarcode('#bc-'+k,id,{format:'CODE128',width:1.6,height:48,displayValue:false,margin:4,background:'#ffffff',lineColor:'#1A1A1A'});}catch(e){}
+      },50);
+    })(key,p.id);
+  });
+}
+function loadDefaultProducts(){
+  if(!confirm('Загрузить стандартные 27 товаров?'))return;
+  DEFAULTS.forEach(function(p){
+    db.ref('products').push({id:p.id,name:p.name,price:p.price,owner:p.owner,brought:0,sold:0});
+  });
+  toast('Загружаем товары...','ok');
+}
+function printLabels(){
+  var list=catFilter==='all'?products:products.filter(function(p){return p.owner===catFilter;});
+  var pa=document.getElementById('print-area');
+  pa.innerHTML='<div class="label-sheet">'+list.map(function(p){
+    var tmp=document.createElement('canvas');
+    try{JsBarcode(tmp,p.id,{format:'CODE128',width:1.8,height:50,displayValue:false,margin:4});}catch(e){}
+    return '<div class="label"><div class="label-name">'+p.name+'</div><div class="label-owner">'+ownerLabel(p.owner)+'</div><div class="label-price">'+fmt(p.price)+'</div><img src="'+tmp.toDataURL('image/png')+'" style="width:100%;max-width:150px"></div>';
+  }).join('')+'</div>';
+  window.print();
+}
 
-// Tab buttons
-document.querySelectorAll('[data-tab]').forEach(btn => {
-  btn.addEventListener('click', () => go(btn.getAttribute('data-tab'), btn));
-});
+// INVENTORY
+function renderInventory(){
+  var totB=0,totS=0,totR=0,totV=0;
+  products.forEach(function(p){
+    totB+=(p.brought||0);totS+=(p.sold||0);
+    var r=Math.max(0,(p.brought||0)-(p.sold||0));
+    totR+=r;totV+=r*p.price;
+  });
+  document.getElementById('inv-stats').innerHTML=
+    '<div class="stat"><div class="slbl">Привезено</div><div class="sval">'+totB+' шт</div></div>'
+    +'<div class="stat"><div class="slbl">Продано</div><div class="sval g">'+totS+' шт</div></div>'
+    +'<div class="stat"><div class="slbl">Остаток</div><div class="sval">'+totR+' шт</div></div>'
+    +'<div class="stat"><div class="slbl">Стоимость остатка</div><div class="sval">'+fmt(totV)+'</div></div>';
+  document.getElementById('inv-body').innerHTML=products.map(function(p){
+    var remain=Math.max(0,(p.brought||0)-(p.sold||0));
+    var cls=remain===0&&p.brought>0?'zero':remain<=2&&p.brought>0?'warn':'ok';
+    var lbl=remain===0&&p.brought>0?'✓ всё':remain+' шт';
+    return '<div class="inv-row">'
+      +'<div><div style="font-weight:700;font-size:13px">'+p.name+'</div>'
+      +'<span class="bdg '+(p.owner||'k')[0]+'" style="font-size:9px;padding:1px 6px">'+ownerLabel(p.owner)+'</span></div>'
+      +'<div style="text-align:right;font-family:\'Unbounded\',sans-serif;font-size:.75rem;font-weight:600;color:var(--k)">'+fmt(p.price)+'</div>'
+      +'<input class="inv-input" type="number" value="'+(p.brought||'')+'" min="0" placeholder="0" onchange="updateBrought(\''+p.fbKey+'\',this.value)">'
+      +'<div style="text-align:center;font-weight:700;color:var(--muted)">'+(p.sold||0)+'</div>'
+      +'<div class="remain '+cls+'">'+lbl+'</div>'
+      +'</div>';
+  }).join('');
+}
+function updateBrought(fbKey,val){db.ref('products/'+fbKey).update({brought:parseInt(val)||0});}
+function resetSold(){
+  if(!confirm('Сбросить "продано"?'))return;
+  products.forEach(function(p){db.ref('products/'+p.fbKey).update({sold:0});});
+  toast('Сброшено');
+}
 </script>
 </body>
 </html>
