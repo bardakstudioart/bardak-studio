@@ -145,10 +145,10 @@ input.fi:focus,select.fi:focus{border-color:var(--k)}
   </div>
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
     <nav class="tabs">
-      <button class="tab on" onclick="go('scan',this)">📷 Сканер</button>
-      <button class="tab" onclick="go('sales',this)">💰 Продажи</button>
-      <button class="tab" onclick="go('catalog',this)">🏷 Каталог</button>
-      <button class="tab" onclick="go('inventory',this)">📦 Склад</button>
+      <button class="tab on" data-tab="scan">📷 Сканер</button>
+      <button class="tab" data-tab="sales">💰 Продажи</button>
+      <button class="tab" data-tab="catalog">🏷 Каталог</button>
+      <button class="tab" data-tab="inventory">📦 Склад</button>
     </nav>
     <div style="display:flex;align-items:center;gap:8px">
       <span id="current-user" style="font-size:12px;opacity:.7;white-space:nowrap"></span>
@@ -365,7 +365,7 @@ onAuthStateChanged(auth, user => {
   }
 });
 
-// ---- LOGIN / LOGOUT ----
+// ---- LOGIN ----
 async function doLogin() {
   const email = document.getElementById('login-email').value.trim();
   const pass = document.getElementById('login-password').value;
@@ -383,7 +383,6 @@ async function doLogin() {
     btn.disabled = false;
   }
 }
-
 document.getElementById('login-btn').addEventListener('click', doLogin);
 document.getElementById('login-email').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
 document.getElementById('login-password').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
@@ -771,33 +770,43 @@ window.filterCat = filterCat;
 
 function renderCatalog() {
   const grid = document.getElementById('cat-grid');
+  if (!grid) return;
   const list = catFilter === 'all' ? products : products.filter(p => p.owner === catFilter);
   grid.innerHTML = '';
-  list.forEach(p => {
-    const card = document.createElement('div');
-    card.className = 'cat-item';
-    card.innerHTML = `
-      <div class="cat-item-top">
-        <div class="cat-item-info">
-          <div class="cat-item-name">${p.name}</div>
-          <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
-            <span class="badge ${p.owner[0]}">${ownerLabel(p.owner)}</span>
-            <span class="cat-item-price">${fmt(p.price)}</span>
-          </div>
-          <div style="font-size:9px;color:var(--muted);margin-top:3px;font-family:monospace">${p.id}</div>
-        </div>
-        <button class="btn icon" onclick="deleteProduct('${p.fbKey}')" style="color:var(--muted);flex-shrink:0">✕</button>
-      </div>
-      <div class="cat-barcode-wrap">
-        <canvas id="bc-${p.fbKey}"></canvas>
-        <div class="cat-code-txt">${p.id}</div>
-      </div>`;
-    grid.appendChild(card);
+  if (!list.length) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1">Нет товаров. Нажмите "Загрузить все товары"</div>';
+    return;
+  }
+  list.forEach((p, i) => {
     try {
-      JsBarcode('#bc-' + p.fbKey, p.id, {
-        format:'CODE128', width:1.6, height:48,
-        displayValue:false, margin:4, background:'#ffffff', lineColor:'#1A1A1A'
-      });
+      const card = document.createElement('div');
+      card.className = 'cat-item';
+      const safeKey = (p.fbKey || p.id || i).replace(/[^a-zA-Z0-9]/g,'_');
+      card.innerHTML = `
+        <div class="cat-item-top">
+          <div class="cat-item-info">
+            <div class="cat-item-name">${p.name}</div>
+            <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
+              <span class="badge ${(p.owner||'katya')[0]}">${ownerLabel(p.owner)}</span>
+              <span class="cat-item-price">${fmt(p.price)}</span>
+            </div>
+            <div style="font-size:9px;color:var(--muted);margin-top:3px;font-family:monospace">${p.id}</div>
+          </div>
+          <button class="btn icon" onclick="deleteProduct('${p.fbKey}')" style="color:var(--muted);flex-shrink:0">✕</button>
+        </div>
+        <div class="cat-barcode-wrap">
+          <canvas id="bc-${safeKey}"></canvas>
+          <div class="cat-code-txt">${p.id}</div>
+        </div>`;
+      grid.appendChild(card);
+      setTimeout(() => {
+        try {
+          JsBarcode('#bc-' + safeKey, p.id || 'X', {
+            format:'CODE128', width:1.6, height:48,
+            displayValue:false, margin:4, background:'#ffffff', lineColor:'#1A1A1A'
+          });
+        } catch(e) {}
+      }, 0);
     } catch(e) {}
   });
 }
@@ -879,6 +888,30 @@ function updateManualSelect() {
 
 setSyncStatus('');
 } // end initApp
+
+// ---- EXPOSE ALL FUNCTIONS TO WINDOW ----
+window.go = go;
+window.toggleScanner = toggleScanner;
+window.selectPay = selectPay;
+window.confirmSale = confirmSale;
+window.cancelScan = cancelScan;
+window.addManual = addManual;
+window.clearToday = clearToday;
+window.exportCSV = exportCSV;
+window.addProduct = addProduct;
+window.printLabels = printLabels;
+window.filterCat = filterCat;
+window.resetAllProducts = resetAllProducts;
+window.resetSold = resetSold;
+window.deleteSale = deleteSale;
+window.deleteProduct = deleteProduct;
+window.renderAllSales = renderAllSales;
+window.updateBrought = updateBrought;
+
+// Tab buttons
+document.querySelectorAll('[data-tab]').forEach(btn => {
+  btn.addEventListener('click', () => go(btn.getAttribute('data-tab'), btn));
+});
 </script>
 </body>
 </html>
