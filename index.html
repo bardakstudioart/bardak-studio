@@ -76,7 +76,6 @@ function renderPubEvents(){
         '<div style="display:flex;gap:8px;align-items:center">'+
           '<span style="font-size:12px;color:var(--muted)">📸 '+photos.length+' фото</span>'+
           '<span style="font-size:12px;color:var(--muted)">💰 '+fmt(evTotal)+'</span>'+
-          '<span class="status-badge '+status+'">'+status+'</span>'+
         '</div>'+
       '</div>';
     div.onclick=function(){selectEventForPublish(ev.fbKey);};
@@ -306,7 +305,7 @@ function doPublish(token,channel,text,lang,ev,btn,photoIds){
       };
       db.ref('posts').push(postData);
       // Mark event as published
-      db.ref('events/'+ev.fbKey).update({publishStatus:'published'});
+      // publishStatus not updated — each shop manages their own posts
       // Mark photos as used
       photos.forEach(function(p){db.ref('photos/'+p.fbKey).update({used:true});});
       toast('✅ Опубликовано в Telegram!','ok');
@@ -328,6 +327,8 @@ function doPublish(token,channel,text,lang,ev,btn,photoIds){
 function saveDraft(){
   if(!selectedEventForPublish){toast('Выберите ивент','err');return;}
   var ev=selectedEventForPublish;
+  var curUser=firebase.auth().currentUser;
+  var draftPublisher=curUser?(USER_NAMES[curUser.email]||curUser.email):'Неизвестно';
   db.ref('posts').push({
     eventId:ev.fbKey,eventName:ev.name,
     textRu:document.getElementById('post-text-ru').value,
@@ -336,9 +337,10 @@ function saveDraft(){
     photoCount:selectedPhotos.length,
     channel:'telegram',
     status:'draft',
+    publisher:draftPublisher,
     createdAt:Date.now()
   });
-  db.ref('events/'+ev.fbKey).update({publishStatus:'draft'});
+  // publishStatus not updated on draft
   toast('Черновик сохранён','ok');
   renderPostLog();
 }
@@ -352,8 +354,11 @@ function renderPostLog(){
     if(!posts.length){el.innerHTML='<div class="empty">Нет публикаций</div>';return;}
     el.innerHTML=posts.map(function(p){
       var t=p.publishedAt?new Date(p.publishedAt).toLocaleString('ru-RU'):'—';
+      var pubName=p.publisher||'';
+      var pubClass=pubName.indexOf('Bardak')>=0?'k':pubName.indexOf('Seal')>=0?'m':'';
       return '<div class="post-log-row">'+
         '<span class="status-badge '+p.status+'">'+p.status+'</span>'+
+        (pubName?'<span class="bdg '+pubClass+'" style="font-size:10px;padding:2px 8px">'+pubName.replace(' 🎨','').replace(' 🦭','')+'</span>':'')+
         '<span style="font-weight:700;flex:1">'+p.eventName+'</span>'+
         '<span class="bdg" style="background:#F1EFE8;color:#5F5E5A">'+p.channel+'</span>'+
         '<span style="font-size:12px;color:var(--muted)">'+t+'</span>'+
@@ -468,7 +473,7 @@ function renderPubEvents(){
         '<div style="display:flex;gap:8px;align-items:center">'+
           '<span style="font-size:12px;color:var(--muted)">📸 '+photos.length+' фото</span>'+
           '<span style="font-size:12px;color:var(--muted)">💰 '+fmt(evTotal)+'</span>'+
-          (ev.publishStatus?'<span class="status-badge '+ev.publishStatus+'">'+ev.publishStatus+'</span>':'<span class="status-badge draft">черновик</span>')+
+          ''+ // publishStatus removed
         '</div>'+
       '</div>'+
     '</div>';
@@ -697,7 +702,7 @@ function doPublish(token,channel,text,lang,ev,btn,photoIds){
       };
       db.ref('posts').push(postData);
       // Mark event as published
-      db.ref('events/'+ev.fbKey).update({publishStatus:'published'});
+      // publishStatus not updated — each shop manages their own posts
       // Mark photos as used
       photos.forEach(function(p){db.ref('photos/'+p.fbKey).update({used:true});});
       toast('✅ Опубликовано в Telegram!','ok');
@@ -719,6 +724,8 @@ function doPublish(token,channel,text,lang,ev,btn,photoIds){
 function saveDraft(){
   if(!selectedEventForPublish){toast('Выберите ивент','err');return;}
   var ev=selectedEventForPublish;
+  var curUser=firebase.auth().currentUser;
+  var draftPublisher=curUser?(USER_NAMES[curUser.email]||curUser.email):'Неизвестно';
   db.ref('posts').push({
     eventId:ev.fbKey,eventName:ev.name,
     textRu:document.getElementById('post-text-ru').value,
@@ -727,9 +734,10 @@ function saveDraft(){
     photoCount:selectedPhotos.length,
     channel:'telegram',
     status:'draft',
+    publisher:draftPublisher,
     createdAt:Date.now()
   });
-  db.ref('events/'+ev.fbKey).update({publishStatus:'draft'});
+  // publishStatus not updated on draft
   toast('Черновик сохранён','ok');
   renderPostLog();
 }
@@ -743,8 +751,11 @@ function renderPostLog(){
     if(!posts.length){el.innerHTML='<div class="empty">Нет публикаций</div>';return;}
     el.innerHTML=posts.map(function(p){
       var t=p.publishedAt?new Date(p.publishedAt).toLocaleString('ru-RU'):'—';
+      var pubName=p.publisher||'';
+      var pubClass=pubName.indexOf('Bardak')>=0?'k':pubName.indexOf('Seal')>=0?'m':'';
       return '<div class="post-log-row">'+
         '<span class="status-badge '+p.status+'">'+p.status+'</span>'+
+        (pubName?'<span class="bdg '+pubClass+'" style="font-size:10px;padding:2px 8px">'+pubName.replace(' 🎨','').replace(' 🦭','')+'</span>':'')+
         '<span style="font-weight:700;flex:1">'+p.eventName+'</span>'+
         '<span class="bdg" style="background:#F1EFE8;color:#5F5E5A">'+p.channel+'</span>'+
         '<span style="font-size:12px;color:var(--muted)">'+t+'</span>'+
@@ -859,7 +870,7 @@ function renderPubEvents(){
         '<div style="display:flex;gap:8px;align-items:center">'+
           '<span style="font-size:12px;color:var(--muted)">📸 '+photos.length+' фото</span>'+
           '<span style="font-size:12px;color:var(--muted)">💰 '+fmt(evTotal)+'</span>'+
-          (ev.publishStatus?'<span class="status-badge '+ev.publishStatus+'">'+ev.publishStatus+'</span>':'<span class="status-badge draft">черновик</span>')+
+          ''+ // publishStatus removed
         '</div>'+
       '</div>'+
     '</div>';
@@ -1088,7 +1099,7 @@ function doPublish(token,channel,text,lang,ev,btn,photoIds){
       };
       db.ref('posts').push(postData);
       // Mark event as published
-      db.ref('events/'+ev.fbKey).update({publishStatus:'published'});
+      // publishStatus not updated — each shop manages their own posts
       // Mark photos as used
       photos.forEach(function(p){db.ref('photos/'+p.fbKey).update({used:true});});
       toast('✅ Опубликовано в Telegram!','ok');
@@ -1110,6 +1121,8 @@ function doPublish(token,channel,text,lang,ev,btn,photoIds){
 function saveDraft(){
   if(!selectedEventForPublish){toast('Выберите ивент','err');return;}
   var ev=selectedEventForPublish;
+  var curUser=firebase.auth().currentUser;
+  var draftPublisher=curUser?(USER_NAMES[curUser.email]||curUser.email):'Неизвестно';
   db.ref('posts').push({
     eventId:ev.fbKey,eventName:ev.name,
     textRu:document.getElementById('post-text-ru').value,
@@ -1118,9 +1131,10 @@ function saveDraft(){
     photoCount:selectedPhotos.length,
     channel:'telegram',
     status:'draft',
+    publisher:draftPublisher,
     createdAt:Date.now()
   });
-  db.ref('events/'+ev.fbKey).update({publishStatus:'draft'});
+  // publishStatus not updated on draft
   toast('Черновик сохранён','ok');
   renderPostLog();
 }
@@ -1134,8 +1148,11 @@ function renderPostLog(){
     if(!posts.length){el.innerHTML='<div class="empty">Нет публикаций</div>';return;}
     el.innerHTML=posts.map(function(p){
       var t=p.publishedAt?new Date(p.publishedAt).toLocaleString('ru-RU'):'—';
+      var pubName=p.publisher||'';
+      var pubClass=pubName.indexOf('Bardak')>=0?'k':pubName.indexOf('Seal')>=0?'m':'';
       return '<div class="post-log-row">'+
         '<span class="status-badge '+p.status+'">'+p.status+'</span>'+
+        (pubName?'<span class="bdg '+pubClass+'" style="font-size:10px;padding:2px 8px">'+pubName.replace(' 🎨','').replace(' 🦭','')+'</span>':'')+
         '<span style="font-weight:700;flex:1">'+p.eventName+'</span>'+
         '<span class="bdg" style="background:#F1EFE8;color:#5F5E5A">'+p.channel+'</span>'+
         '<span style="font-size:12px;color:var(--muted)">'+t+'</span>'+
@@ -1250,7 +1267,7 @@ function renderPubEvents(){
         '<div style="display:flex;gap:8px;align-items:center">'+
           '<span style="font-size:12px;color:var(--muted)">📸 '+photos.length+' фото</span>'+
           '<span style="font-size:12px;color:var(--muted)">💰 '+fmt(evTotal)+'</span>'+
-          (ev.publishStatus?'<span class="status-badge '+ev.publishStatus+'">'+ev.publishStatus+'</span>':'<span class="status-badge draft">черновик</span>')+
+          ''+ // publishStatus removed
         '</div>'+
       '</div>'+
     '</div>';
@@ -1479,7 +1496,7 @@ function doPublish(token,channel,text,lang,ev,btn,photoIds){
       };
       db.ref('posts').push(postData);
       // Mark event as published
-      db.ref('events/'+ev.fbKey).update({publishStatus:'published'});
+      // publishStatus not updated — each shop manages their own posts
       // Mark photos as used
       photos.forEach(function(p){db.ref('photos/'+p.fbKey).update({used:true});});
       toast('✅ Опубликовано в Telegram!','ok');
@@ -1501,6 +1518,8 @@ function doPublish(token,channel,text,lang,ev,btn,photoIds){
 function saveDraft(){
   if(!selectedEventForPublish){toast('Выберите ивент','err');return;}
   var ev=selectedEventForPublish;
+  var curUser=firebase.auth().currentUser;
+  var draftPublisher=curUser?(USER_NAMES[curUser.email]||curUser.email):'Неизвестно';
   db.ref('posts').push({
     eventId:ev.fbKey,eventName:ev.name,
     textRu:document.getElementById('post-text-ru').value,
@@ -1509,9 +1528,10 @@ function saveDraft(){
     photoCount:selectedPhotos.length,
     channel:'telegram',
     status:'draft',
+    publisher:draftPublisher,
     createdAt:Date.now()
   });
-  db.ref('events/'+ev.fbKey).update({publishStatus:'draft'});
+  // publishStatus not updated on draft
   toast('Черновик сохранён','ok');
   renderPostLog();
 }
@@ -1525,8 +1545,11 @@ function renderPostLog(){
     if(!posts.length){el.innerHTML='<div class="empty">Нет публикаций</div>';return;}
     el.innerHTML=posts.map(function(p){
       var t=p.publishedAt?new Date(p.publishedAt).toLocaleString('ru-RU'):'—';
+      var pubName=p.publisher||'';
+      var pubClass=pubName.indexOf('Bardak')>=0?'k':pubName.indexOf('Seal')>=0?'m':'';
       return '<div class="post-log-row">'+
         '<span class="status-badge '+p.status+'">'+p.status+'</span>'+
+        (pubName?'<span class="bdg '+pubClass+'" style="font-size:10px;padding:2px 8px">'+pubName.replace(' 🎨','').replace(' 🦭','')+'</span>':'')+
         '<span style="font-weight:700;flex:1">'+p.eventName+'</span>'+
         '<span class="bdg" style="background:#F1EFE8;color:#5F5E5A">'+p.channel+'</span>'+
         '<span style="font-size:12px;color:var(--muted)">'+t+'</span>'+
@@ -1641,7 +1664,7 @@ function renderPubEvents(){
         '<div style="display:flex;gap:8px;align-items:center">'+
           '<span style="font-size:12px;color:var(--muted)">📸 '+photos.length+' фото</span>'+
           '<span style="font-size:12px;color:var(--muted)">💰 '+fmt(evTotal)+'</span>'+
-          (ev.publishStatus?'<span class="status-badge '+ev.publishStatus+'">'+ev.publishStatus+'</span>':'<span class="status-badge draft">черновик</span>')+
+          ''+ // publishStatus removed
         '</div>'+
       '</div>'+
     '</div>';
@@ -1870,7 +1893,7 @@ function doPublish(token,channel,text,lang,ev,btn,photoIds){
       };
       db.ref('posts').push(postData);
       // Mark event as published
-      db.ref('events/'+ev.fbKey).update({publishStatus:'published'});
+      // publishStatus not updated — each shop manages their own posts
       // Mark photos as used
       photos.forEach(function(p){db.ref('photos/'+p.fbKey).update({used:true});});
       toast('✅ Опубликовано в Telegram!','ok');
@@ -1892,6 +1915,8 @@ function doPublish(token,channel,text,lang,ev,btn,photoIds){
 function saveDraft(){
   if(!selectedEventForPublish){toast('Выберите ивент','err');return;}
   var ev=selectedEventForPublish;
+  var curUser=firebase.auth().currentUser;
+  var draftPublisher=curUser?(USER_NAMES[curUser.email]||curUser.email):'Неизвестно';
   db.ref('posts').push({
     eventId:ev.fbKey,eventName:ev.name,
     textRu:document.getElementById('post-text-ru').value,
@@ -1900,9 +1925,10 @@ function saveDraft(){
     photoCount:selectedPhotos.length,
     channel:'telegram',
     status:'draft',
+    publisher:draftPublisher,
     createdAt:Date.now()
   });
-  db.ref('events/'+ev.fbKey).update({publishStatus:'draft'});
+  // publishStatus not updated on draft
   toast('Черновик сохранён','ok');
   renderPostLog();
 }
@@ -1916,8 +1942,11 @@ function renderPostLog(){
     if(!posts.length){el.innerHTML='<div class="empty">Нет публикаций</div>';return;}
     el.innerHTML=posts.map(function(p){
       var t=p.publishedAt?new Date(p.publishedAt).toLocaleString('ru-RU'):'—';
+      var pubName=p.publisher||'';
+      var pubClass=pubName.indexOf('Bardak')>=0?'k':pubName.indexOf('Seal')>=0?'m':'';
       return '<div class="post-log-row">'+
         '<span class="status-badge '+p.status+'">'+p.status+'</span>'+
+        (pubName?'<span class="bdg '+pubClass+'" style="font-size:10px;padding:2px 8px">'+pubName.replace(' 🎨','').replace(' 🦭','')+'</span>':'')+
         '<span style="font-weight:700;flex:1">'+p.eventName+'</span>'+
         '<span class="bdg" style="background:#F1EFE8;color:#5F5E5A">'+p.channel+'</span>'+
         '<span style="font-size:12px;color:var(--muted)">'+t+'</span>'+
@@ -3279,7 +3308,7 @@ function renderPubEvents(){
         '<div style="display:flex;gap:8px;align-items:center">'+
           '<span style="font-size:12px;color:var(--muted)">📸 '+photos.length+' фото</span>'+
           '<span style="font-size:12px;color:var(--muted)">💰 '+fmt(evTotal)+'</span>'+
-          (ev.publishStatus?'<span class="status-badge '+ev.publishStatus+'">'+ev.publishStatus+'</span>':'<span class="status-badge draft">черновик</span>')+
+          ''+ // publishStatus removed
         '</div>'+
       '</div>'+
     '</div>';
@@ -3536,7 +3565,7 @@ function doPublish(token,channel,text,lang,ev,btn,photoIds){
         postUrl:'https://t.me/'+channel.replace('@','')
       };
       db.ref('posts').push(postData);
-      db.ref('events/'+ev.fbKey).update({publishStatus:'published'});
+      // publishStatus not updated — each shop manages their own posts
       photos.forEach(function(p){db.ref('photos/'+p.fbKey).update({used:true});});
       toast('Опубликовано в Telegram!','ok');
       renderPubEvents();
@@ -3552,6 +3581,89 @@ function doPublish(token,channel,text,lang,ev,btn,photoIds){
     toast('Ошибка сети: '+e.message,'err');
     if(btn){btn.textContent='Telegram (рус)';btn.disabled=false;}
   });
+}function doPublish(token,channel,text,lang,ev,btn,photoIds){
+  var photos=selectedPhotos;
+  var apiBase='https://api.telegram.org/bot'+token;
+  var promise;
+
+  function b64toBlob(dataUrl){
+    var b64=dataUrl.split(',')[1];
+    var bin=atob(b64);
+    var arr=new Uint8Array(bin.length);
+    for(var j=0;j<bin.length;j++)arr[j]=bin.charCodeAt(j);
+    return new Blob([arr],{type:'image/jpeg'});
+  }
+
+  function saveResult(ok, errMsg){
+    if(ok){
+      var currentUser=firebase.auth().currentUser;
+      var publisher=currentUser?(USER_NAMES[currentUser.email]||currentUser.email):'Неизвестно';
+      db.ref('posts').push({
+        eventId:ev.fbKey,eventName:ev.name,
+        text:text,lang:lang,
+        photoCount:photos.length,
+        photoIds:photoIds||'',
+        channel:'telegram',status:'published',
+        publisher:publisher,
+        publishedAt:Date.now(),
+        postUrl:'https://t.me/'+channel.replace('@','')
+      });
+      // publishStatus not updated — each shop manages their own posts
+      photos.forEach(function(p){db.ref('photos/'+p.fbKey).update({used:true});});
+      toast('Опубликовано в Telegram!','ok');
+      renderPubEvents();renderPostLog();
+    } else {
+      db.ref('posts').push({eventId:ev.fbKey,eventName:ev.name,channel:'telegram',status:'failed',error:errMsg||'error',publishedAt:Date.now()});
+      toast('Ошибка: '+(errMsg||'неизвестная'),'err');
+      renderPostLog();
+    }
+    if(btn){btn.textContent='Telegram (рус)';btn.disabled=false;}
+  }
+
+  if(photos.length===0){
+    // Text only
+    fetch(apiBase+'/sendMessage',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:channel,text:text})
+    }).then(function(r){return r.json();}).then(function(r){
+      saveResult(r.ok, r.description);
+    }).catch(function(e){saveResult(false,e.message);});
+
+  } else if(photos.length===1){
+    // Single photo with caption
+    var fd=new FormData();
+    fd.append('chat_id',channel);
+    fd.append('photo',b64toBlob(photos[0].url),'photo.jpg');
+    fd.append('caption',text);
+    fetch(apiBase+'/sendPhoto',{method:'POST',body:fd})
+      .then(function(r){return r.json();})
+      .then(function(r){saveResult(r.ok,r.description);})
+      .catch(function(e){saveResult(false,e.message);});
+
+  } else {
+    // Album: sendMediaGroup with caption on first photo
+    // All files must be in same FormData with attach:// references
+    var fd=new FormData();
+    fd.append('chat_id',channel);
+    var mediaArr=[];
+    photos.slice(0,10).forEach(function(p,i){
+      var fname='file'+i;
+      fd.append(fname, b64toBlob(p.url), fname+'.jpg');
+      var m={type:'photo', media:'attach://'+fname};
+      if(i===0){m.caption=text;}
+      mediaArr.push(m);
+    });
+    fd.append('media', JSON.stringify(mediaArr));
+    fetch(apiBase+'/sendMediaGroup',{method:'POST',body:fd})
+      .then(function(r){return r.json();})
+      .then(function(r){
+        // sendMediaGroup returns array
+        var ok=Array.isArray(r)? r[0].ok : r.ok;
+        var desc=Array.isArray(r)? r[0].description : r.description;
+        saveResult(ok, desc);
+      })
+      .catch(function(e){saveResult(false,e.message);});
+  }
 }function doPublish(token,channel,text,lang,ev,btn,photoIds){
   var photos=selectedPhotos;
   var apiBase='https://api.telegram.org/bot'+token;
@@ -3612,7 +3724,7 @@ function doPublish(token,channel,text,lang,ev,btn,photoIds){
       };
       db.ref('posts').push(postData);
       // Mark event as published
-      db.ref('events/'+ev.fbKey).update({publishStatus:'published'});
+      // publishStatus not updated — each shop manages their own posts
       // Mark photos as used
       photos.forEach(function(p){db.ref('photos/'+p.fbKey).update({used:true});});
       toast('✅ Опубликовано в Telegram!','ok');
@@ -3634,6 +3746,8 @@ function doPublish(token,channel,text,lang,ev,btn,photoIds){
 function saveDraft(){
   if(!selectedEventForPublish){toast('Выберите ивент','err');return;}
   var ev=selectedEventForPublish;
+  var curUser=firebase.auth().currentUser;
+  var draftPublisher=curUser?(USER_NAMES[curUser.email]||curUser.email):'Неизвестно';
   db.ref('posts').push({
     eventId:ev.fbKey,eventName:ev.name,
     textRu:document.getElementById('post-text-ru').value,
@@ -3642,9 +3756,10 @@ function saveDraft(){
     photoCount:selectedPhotos.length,
     channel:'telegram',
     status:'draft',
+    publisher:draftPublisher,
     createdAt:Date.now()
   });
-  db.ref('events/'+ev.fbKey).update({publishStatus:'draft'});
+  // publishStatus not updated on draft
   toast('Черновик сохранён','ok');
   renderPostLog();
 }
@@ -3658,8 +3773,11 @@ function renderPostLog(){
     if(!posts.length){el.innerHTML='<div class="empty">Нет публикаций</div>';return;}
     el.innerHTML=posts.map(function(p){
       var t=p.publishedAt?new Date(p.publishedAt).toLocaleString('ru-RU'):'—';
+      var pubName=p.publisher||'';
+      var pubClass=pubName.indexOf('Bardak')>=0?'k':pubName.indexOf('Seal')>=0?'m':'';
       return '<div class="post-log-row">'+
         '<span class="status-badge '+p.status+'">'+p.status+'</span>'+
+        (pubName?'<span class="bdg '+pubClass+'" style="font-size:10px;padding:2px 8px">'+pubName.replace(' 🎨','').replace(' 🦭','')+'</span>':'')+
         '<span style="font-weight:700;flex:1">'+p.eventName+'</span>'+
         '<span class="bdg" style="background:#F1EFE8;color:#5F5E5A">'+p.channel+'</span>'+
         '<span style="font-size:12px;color:var(--muted)">'+t+'</span>'+
