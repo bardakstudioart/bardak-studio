@@ -3536,56 +3536,47 @@ function selectEventForPublish(fbKey){
   window.scrollTo({top:document.getElementById('pub-workspace').offsetTop-80,behavior:'smooth'});
 }
 
-// Override generatePost to use Claude API via artifact proxy
+// Generate post using smart templates
 function generatePost(){
-  if(!selectedEventForPublish){toast('Сначала выберите ивент','err');return;}
+  if(!selectedEventForPublish){toast('Sначала выберите ивент','err');return;}
   var btn=document.getElementById('gen-btn');
-  if(btn){btn.textContent='⏳ Генерирую...';btn.disabled=true;}
+  if(btn){btn.textContent='Генерирую...';btn.disabled=true;}
   var ev=selectedEventForPublish;
   var evSales=sales.filter(function(s){return s.eventId===ev.fbKey;});
-  var total=evSales.reduce(function(a,s){return a+s.price;},0);
+  var hashtags=ev.hashtags||'#bardakstudio #yarmark #handmade';
+  var location=ev.location||'';
+  var dateStr=ev.startDate+(ev.endDate&&ev.endDate!==ev.startDate?' — '+ev.endDate:'');
+  var loc=location?' в '+location:'';
+  var locEn=location?' in '+location:'';
+  var locKo=location?' '+location+' 에서':'';
 
-  var prompt='Напиши пост для Telegram канала магазина Bardak Studio о прошедшем мероприятии.\n'+
-    'Мероприятие: "'+ev.name+'".\n'+
-    'Дата: '+ev.startDate+(ev.endDate!==ev.startDate?' — '+ev.endDate:'')+'.\n'+
-    (ev.location?'Место: '+ev.location+'.\n':'')+
-    (ev.description?'Описание: '+ev.description+'.\n':'')+
-    (total>0?'Выручка с мероприятия: '+fmt(total)+'.\n':'')+
-    (ev.hashtags?'Хэштеги: '+ev.hashtags+'.\n':'')+
-    'Напиши три версии поста — на русском, английском и корейском.\n'+
-    'Пиши живым дружелюбным языком, тепло и искренне. Добавь эмодзи.\n'+
-    'Каждый текст не длиннее 280 символов.\n'+
-    'Оберни каждую версию в XML теги: <ru>текст</ru> <en>текст</en> <ko>텍스트</ko>';
-
-  fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'anthropic-dangerous-allow-browser':'true'
-    },
-    body:JSON.stringify({
-      model:'claude-sonnet-4-20250514',
-      max_tokens:1000,
-      messages:[{role:'user',content:prompt}]
-    })
-  }).then(function(r){return r.json();})
-  .then(function(data){
-    if(!data.content||!data.content[0]){throw new Error('No content');}
-    var text=data.content[0].text;
-    var ru=text.match(/<ru>([\s\S]*?)<\/ru>/);
-    var en=text.match(/<en>([\s\S]*?)<\/en>/);
-    var ko=text.match(/<ko>([\s\S]*?)<\/ko>/);
-    if(ru){var el=document.getElementById('post-text-ru');if(el)el.value=ru[1].trim();}
-    if(en){var el=document.getElementById('post-text-en');if(el)el.value=en[1].trim();}
-    if(ko){var el=document.getElementById('post-text-ko');if(el)el.value=ko[1].trim();}
+  var ruTemplates=[
+    '🎉 '+ev.name+' позади — и это было невероятно! Спасибо каждому, кто заглянул к нам'+loc+' '+dateStr+'! Вы делаете нашу работу значимой 💛 '+hashtags,
+    '✨ '+dateStr+' мы были на '+ev.name+loc+'! Столько тёплых встреч, улыбок и добрых слов — это всё благодаря вам 🐱 '+hashtags,
+    '🛍 '+ev.name+' завершился'+loc+'! Было здорово видеть вас '+dateStr+'. Ждём вас на следующем мероприятии! 🌟 '+hashtags,
+  ];
+  var enTemplates=[
+    '🎉 '+ev.name+' has ended — and it was amazing! Thank you to everyone who stopped by'+locEn+' on '+dateStr+'! You make our work meaningful 💛 '+hashtags,
+    '✨ We were at '+ev.name+locEn+' on '+dateStr+'! So many warm encounters and smiles — all thanks to you 🐱 '+hashtags,
+    '🛍 '+ev.name+' is over'+locEn+'! It was wonderful to see you all on '+dateStr+'. See you at the next event! 🌟 '+hashtags,
+  ];
+  var koTemplates=[
+    ev.name+' 가 끝났어요! '+dateStr+locKo+' 찾아와 주신 모든 분들께 감사드려요 💛 '+hashtags,
+    dateStr+locKo+' '+ev.name+' 에 참가했어요! 따뜻한 만남과 미소들 — 모두 여러분 덕분이에요 🐱 '+hashtags,
+    ev.name+' 가 마무리됐어요! '+dateStr+'에 만나서 반가웠어요. 다음 이벤트에서 또 만나요! 🌟 '+hashtags,
+  ];
+  function pick(arr){return arr[Math.floor(Math.random()*arr.length)];}
+  setTimeout(function(){
+    var ru=document.getElementById('post-text-ru');
+    var en=document.getElementById('post-text-en');
+    var ko=document.getElementById('post-text-ko');
+    if(ru)ru.value=pick(ruTemplates);
+    if(en)en.value=pick(enTemplates);
+    if(ko)ko.value=pick(koTemplates);
     updatePreview();
-    toast('✨ Пост сгенерирован!','ok');
-  }).catch(function(e){
-    console.error('Generate error:',e);
-    toast('Ошибка генерации — попробуйте ещё раз','err');
-  }).finally(function(){
-    if(btn){btn.textContent='✨ Сгенерировать через AI';btn.disabled=false;}
-  });
+    toast('Пост сгенерирован!','ok');
+    if(btn){btn.textContent='Другой вариант';btn.disabled=false;}
+  },400);
 }
 
 </script>
