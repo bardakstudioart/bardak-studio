@@ -2956,24 +2956,68 @@ function renderEvents(){
   var el=document.getElementById('events-list');
   if(!events.length){el.innerHTML='<div class="empty">Нет ивентов — создайте первый!</div>';return;}
   var today=new Date().toISOString().slice(0,10);
-  el.innerHTML=events.map(function(ev){
+  el.innerHTML='';
+  events.forEach(function(ev){
     var evSales=sales.filter(function(s){return s.eventId===ev.fbKey;});
     var evTotal=evSales.reduce(function(a,s){return a+s.price;},0);
     var isActive=ev.startDate<=today&&ev.endDate>=today;
     var isPast=ev.endDate<today;
-    return '<div class="event-card'+(isActive?' event-active':'')+'">'+
-      '<div class="event-dot" style="background:'+( isActive?'var(--k)':isPast?'var(--muted)':'var(--gold)')+'"></div>'+
+
+    // Count unlinked sales in this event's date range
+    var unlinked=sales.filter(function(s){
+      if(s.eventId) return false;
+      var d=new Date(s.time||s.ts).toISOString().slice(0,10);
+      return d>=ev.startDate && d<=ev.endDate;
+    });
+
+    var div=document.createElement('div');
+    div.className='event-card'+(isActive?' event-active':'');
+    div.innerHTML=
+      '<div class="event-dot" style="background:'+(isActive?'var(--k)':isPast?'var(--muted)':'var(--gold)')+'"></div>'+
       '<div style="flex:1">'+
-        '<div class="event-name">'+ev.name+(isActive?' <span style="font-size:11px;background:var(--kl);color:var(--k2);padding:2px 8px;border-radius:20px;font-weight:700">● Сейчас</span>':'')+'</div>'+
+        '<div class="event-name">'+ev.name+(isActive?' <span style="font-size:11px;background:var(--kl);color:var(--k2);padding:2px 8px;border-radius:20px;font-weight:700">● Сейчас</span>':'')+
+        (unlinked.length>0?' <span style="font-size:11px;background:#FAEEDA;color:#854F0B;padding:2px 8px;border-radius:20px;font-weight:700">⚠️ '+unlinked.length+' продаж не привязано</span>':'')+'</div>'+
         '<div class="event-date">'+ev.startDate+(ev.endDate!==ev.startDate?' → '+ev.endDate:'')+'</div>'+
       '</div>'+
       '<div>'+
         '<div class="event-revenue">'+fmt(evTotal)+'</div>'+
         '<div style="font-size:11px;color:var(--muted);text-align:right">'+evSales.length+' продаж</div>'+
       '</div>'+
-      '<button class="btn ic" onclick="deleteEvent(\''+ev.fbKey+'\')" style="color:var(--muted)">✕</button>'+
-    '</div>';
-  }).join('');
+      (unlinked.length>0?'<button class="btn sm gold" id="link-btn-'+ev.fbKey+'">🔗 Привязать продажи</button>':'')+
+      '<button class="btn ic" id="del-btn-'+ev.fbKey+'" style="color:var(--muted)">✕</button>';
+
+    // Bind buttons
+    var delBtn=div.querySelector('#del-btn-'+ev.fbKey);
+    if(delBtn) delBtn.onclick=function(){deleteEvent(ev.fbKey);};
+
+    var linkBtn=div.querySelector('#link-btn-'+ev.fbKey);
+    if(linkBtn) linkBtn.onclick=function(){linkSalesToEvent(ev);};
+
+    el.appendChild(div);
+  });
+}
+
+function linkSalesToEvent(ev){
+  var unlinked=sales.filter(function(s){
+    if(s.eventId) return false;
+    var d=new Date(s.time||s.ts).toISOString().slice(0,10);
+    return d>=ev.startDate && d<=ev.endDate;
+  });
+  if(!unlinked.length){toast('Нет продаж для привязки','warn');return;}
+  if(!confirm('Привязать '+unlinked.length+' продаж к ивенту "'+ev.name+'"?'))return;
+  var btn=document.getElementById('link-btn-'+ev.fbKey);
+  if(btn){btn.textContent='⏳ Привязываю...';btn.disabled=true;}
+  var done=0;
+  unlinked.forEach(function(s){
+    db.ref('sales/'+s.fbKey).update({eventId:ev.fbKey,eventName:ev.name},function(){
+      done++;
+      if(done===unlinked.length){
+        toast('✅ '+done+' продаж привязано к "'+ev.name+'"','ok');
+        renderEvents();
+        renderAnalytics();
+      }
+    });
+  });
 }
 
 // CATALOG
