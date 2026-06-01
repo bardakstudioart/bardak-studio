@@ -2948,6 +2948,18 @@ function addEvent(){
   document.getElementById('ev-end').value='';
   toast('Ивент создан!','ok');
 }
+function updateEventName(fbKey, currentName){
+  var newName=prompt('Новое название ивента:', currentName);
+  if(!newName || newName.trim()===currentName) return;
+  newName=newName.trim();
+  db.ref('events/'+fbKey).update({name:newName});
+  // Also update eventName in linked sales
+  sales.filter(function(s){return s.eventId===fbKey;}).forEach(function(s){
+    db.ref('sales/'+s.fbKey).update({eventName:newName});
+  });
+  toast('Название обновлено','ok');
+}
+
 function deleteEvent(fbKey){
   if(!confirm('Удалить ивент? Данные продаж сохранятся.'))return;
   db.ref('events/'+fbKey).remove();toast('Ивент удалён');
@@ -2975,8 +2987,12 @@ function renderEvents(){
     div.innerHTML=
       '<div class="event-dot" style="background:'+(isActive?'var(--k)':isPast?'var(--muted)':'var(--gold)')+'"></div>'+
       '<div style="flex:1">'+
-        '<div class="event-name">'+ev.name+(isActive?' <span style="font-size:11px;background:var(--kl);color:var(--k2);padding:2px 8px;border-radius:20px;font-weight:700">● Сейчас</span>':'')+
-        (unlinked.length>0?' <span style="font-size:11px;background:#FAEEDA;color:#854F0B;padding:2px 8px;border-radius:20px;font-weight:700">⚠️ '+unlinked.length+' продаж не привязано</span>':'')+'</div>'+
+        '<div class="event-name" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
+          '<span id="ev-name-'+ev.fbKey+'" style="cursor:default">'+ev.name+'</span>'+
+          (isActive?' <span style="font-size:11px;background:var(--kl);color:var(--k2);padding:2px 8px;border-radius:20px;font-weight:700">● Сейчас</span>':'')+
+          (unlinked.length>0?' <span style="font-size:11px;background:#FAEEDA;color:#854F0B;padding:2px 8px;border-radius:20px;font-weight:700">⚠️ '+unlinked.length+' продаж не привязано</span>':'')+
+          '<button class="btn sm" id="edit-ev-'+ev.fbKey+'" style="font-size:10px;padding:2px 8px">✏️</button>'+
+        '</div>'+
         '<div class="event-date">'+ev.startDate+(ev.endDate!==ev.startDate?' → '+ev.endDate:'')+'</div>'+
       '</div>'+
       '<div>'+
@@ -2992,6 +3008,9 @@ function renderEvents(){
 
     var linkBtn=div.querySelector('#link-btn-'+ev.fbKey);
     if(linkBtn) linkBtn.onclick=function(){linkSalesToEvent(ev);};
+
+    var editBtn=div.querySelector('#edit-ev-'+ev.fbKey);
+    if(editBtn) editBtn.onclick=function(e){e.stopPropagation();updateEventName(ev.fbKey,ev.name);};
 
     el.appendChild(div);
   });
