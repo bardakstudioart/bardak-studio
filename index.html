@@ -258,20 +258,37 @@ function doPublish(token,channel,text,lang,ev,btn){
       body:JSON.stringify({chat_id:channel,text:text,parse_mode:'HTML'})
     }).then(function(r){return r.json();});
   } else if(photos.length===1){
-    // Single photo
-    promise=fetch(apiBase+'/sendPhoto',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({chat_id:channel,photo:photos[0].url,caption:text,parse_mode:'HTML'})
-    }).then(function(r){return r.json();});
+    // Single photo - send as multipart form
+    var b64=photos[0].url.split(',')[1];
+    var bin=atob(b64);
+    var arr=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+    var blob=new Blob([arr],{type:'image/jpeg'});
+    var fd=new FormData();
+    fd.append('chat_id',channel);
+    fd.append('photo',blob,'photo.jpg');
+    fd.append('caption',text);
+    promise=fetch(apiBase+'/sendPhoto',{method:'POST',body:fd}).then(function(r){return r.json();});
   } else {
-    // Album (media group) - up to 10 photos
-    var media=photos.slice(0,10).map(function(p,i){
-      return {type:'photo',media:p.url,caption:i===0?text:undefined,parse_mode:i===0?'HTML':undefined};
+    // Album - send each photo separately then send text
+    var photoPromises=photos.slice(0,10).map(function(p){
+      var b64=p.url.split(',')[1];
+      var bin=atob(b64);
+      var arr=new Uint8Array(bin.length);
+      for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+      var blob=new Blob([arr],{type:'image/jpeg'});
+      var fd=new FormData();
+      fd.append('chat_id',channel);
+      fd.append('photo',blob,'photo.jpg');
+      return fetch(apiBase+'/sendPhoto',{method:'POST',body:fd}).then(function(r){return r.json();});
     });
-    promise=fetch(apiBase+'/sendMediaGroup',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({chat_id:channel,media:media})
-    }).then(function(r){return r.json();});
+    promise=Promise.all(photoPromises).then(function(results){
+      // Send caption as separate message
+      return fetch(apiBase+'/sendMessage',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({chat_id:channel,text:text})
+      }).then(function(r){return r.json();});
+    });
   }
 
   promise.then(function(result){
@@ -631,20 +648,37 @@ function doPublish(token,channel,text,lang,ev,btn){
       body:JSON.stringify({chat_id:channel,text:text,parse_mode:'HTML'})
     }).then(function(r){return r.json();});
   } else if(photos.length===1){
-    // Single photo
-    promise=fetch(apiBase+'/sendPhoto',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({chat_id:channel,photo:photos[0].url,caption:text,parse_mode:'HTML'})
-    }).then(function(r){return r.json();});
+    // Single photo - send as multipart form
+    var b64=photos[0].url.split(',')[1];
+    var bin=atob(b64);
+    var arr=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+    var blob=new Blob([arr],{type:'image/jpeg'});
+    var fd=new FormData();
+    fd.append('chat_id',channel);
+    fd.append('photo',blob,'photo.jpg');
+    fd.append('caption',text);
+    promise=fetch(apiBase+'/sendPhoto',{method:'POST',body:fd}).then(function(r){return r.json();});
   } else {
-    // Album (media group) - up to 10 photos
-    var media=photos.slice(0,10).map(function(p,i){
-      return {type:'photo',media:p.url,caption:i===0?text:undefined,parse_mode:i===0?'HTML':undefined};
+    // Album - send each photo separately then send text
+    var photoPromises=photos.slice(0,10).map(function(p){
+      var b64=p.url.split(',')[1];
+      var bin=atob(b64);
+      var arr=new Uint8Array(bin.length);
+      for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+      var blob=new Blob([arr],{type:'image/jpeg'});
+      var fd=new FormData();
+      fd.append('chat_id',channel);
+      fd.append('photo',blob,'photo.jpg');
+      return fetch(apiBase+'/sendPhoto',{method:'POST',body:fd}).then(function(r){return r.json();});
     });
-    promise=fetch(apiBase+'/sendMediaGroup',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({chat_id:channel,media:media})
-    }).then(function(r){return r.json();});
+    promise=Promise.all(photoPromises).then(function(results){
+      // Send caption as separate message
+      return fetch(apiBase+'/sendMessage',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({chat_id:channel,text:text})
+      }).then(function(r){return r.json();});
+    });
   }
 
   promise.then(function(result){
@@ -1004,20 +1038,37 @@ function doPublish(token,channel,text,lang,ev,btn){
       body:JSON.stringify({chat_id:channel,text:text,parse_mode:'HTML'})
     }).then(function(r){return r.json();});
   } else if(photos.length===1){
-    // Single photo
-    promise=fetch(apiBase+'/sendPhoto',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({chat_id:channel,photo:photos[0].url,caption:text,parse_mode:'HTML'})
-    }).then(function(r){return r.json();});
+    // Single photo - send as multipart form
+    var b64=photos[0].url.split(',')[1];
+    var bin=atob(b64);
+    var arr=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+    var blob=new Blob([arr],{type:'image/jpeg'});
+    var fd=new FormData();
+    fd.append('chat_id',channel);
+    fd.append('photo',blob,'photo.jpg');
+    fd.append('caption',text);
+    promise=fetch(apiBase+'/sendPhoto',{method:'POST',body:fd}).then(function(r){return r.json();});
   } else {
-    // Album (media group) - up to 10 photos
-    var media=photos.slice(0,10).map(function(p,i){
-      return {type:'photo',media:p.url,caption:i===0?text:undefined,parse_mode:i===0?'HTML':undefined};
+    // Album - send each photo separately then send text
+    var photoPromises=photos.slice(0,10).map(function(p){
+      var b64=p.url.split(',')[1];
+      var bin=atob(b64);
+      var arr=new Uint8Array(bin.length);
+      for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+      var blob=new Blob([arr],{type:'image/jpeg'});
+      var fd=new FormData();
+      fd.append('chat_id',channel);
+      fd.append('photo',blob,'photo.jpg');
+      return fetch(apiBase+'/sendPhoto',{method:'POST',body:fd}).then(function(r){return r.json();});
     });
-    promise=fetch(apiBase+'/sendMediaGroup',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({chat_id:channel,media:media})
-    }).then(function(r){return r.json();});
+    promise=Promise.all(photoPromises).then(function(results){
+      // Send caption as separate message
+      return fetch(apiBase+'/sendMessage',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({chat_id:channel,text:text})
+      }).then(function(r){return r.json();});
+    });
   }
 
   promise.then(function(result){
@@ -1377,20 +1428,37 @@ function doPublish(token,channel,text,lang,ev,btn){
       body:JSON.stringify({chat_id:channel,text:text,parse_mode:'HTML'})
     }).then(function(r){return r.json();});
   } else if(photos.length===1){
-    // Single photo
-    promise=fetch(apiBase+'/sendPhoto',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({chat_id:channel,photo:photos[0].url,caption:text,parse_mode:'HTML'})
-    }).then(function(r){return r.json();});
+    // Single photo - send as multipart form
+    var b64=photos[0].url.split(',')[1];
+    var bin=atob(b64);
+    var arr=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+    var blob=new Blob([arr],{type:'image/jpeg'});
+    var fd=new FormData();
+    fd.append('chat_id',channel);
+    fd.append('photo',blob,'photo.jpg');
+    fd.append('caption',text);
+    promise=fetch(apiBase+'/sendPhoto',{method:'POST',body:fd}).then(function(r){return r.json();});
   } else {
-    // Album (media group) - up to 10 photos
-    var media=photos.slice(0,10).map(function(p,i){
-      return {type:'photo',media:p.url,caption:i===0?text:undefined,parse_mode:i===0?'HTML':undefined};
+    // Album - send each photo separately then send text
+    var photoPromises=photos.slice(0,10).map(function(p){
+      var b64=p.url.split(',')[1];
+      var bin=atob(b64);
+      var arr=new Uint8Array(bin.length);
+      for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+      var blob=new Blob([arr],{type:'image/jpeg'});
+      var fd=new FormData();
+      fd.append('chat_id',channel);
+      fd.append('photo',blob,'photo.jpg');
+      return fetch(apiBase+'/sendPhoto',{method:'POST',body:fd}).then(function(r){return r.json();});
     });
-    promise=fetch(apiBase+'/sendMediaGroup',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({chat_id:channel,media:media})
-    }).then(function(r){return r.json();});
+    promise=Promise.all(photoPromises).then(function(results){
+      // Send caption as separate message
+      return fetch(apiBase+'/sendMessage',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({chat_id:channel,text:text})
+      }).then(function(r){return r.json();});
+    });
   }
 
   promise.then(function(result){
@@ -1750,20 +1818,37 @@ function doPublish(token,channel,text,lang,ev,btn){
       body:JSON.stringify({chat_id:channel,text:text,parse_mode:'HTML'})
     }).then(function(r){return r.json();});
   } else if(photos.length===1){
-    // Single photo
-    promise=fetch(apiBase+'/sendPhoto',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({chat_id:channel,photo:photos[0].url,caption:text,parse_mode:'HTML'})
-    }).then(function(r){return r.json();});
+    // Single photo - send as multipart form
+    var b64=photos[0].url.split(',')[1];
+    var bin=atob(b64);
+    var arr=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+    var blob=new Blob([arr],{type:'image/jpeg'});
+    var fd=new FormData();
+    fd.append('chat_id',channel);
+    fd.append('photo',blob,'photo.jpg');
+    fd.append('caption',text);
+    promise=fetch(apiBase+'/sendPhoto',{method:'POST',body:fd}).then(function(r){return r.json();});
   } else {
-    // Album (media group) - up to 10 photos
-    var media=photos.slice(0,10).map(function(p,i){
-      return {type:'photo',media:p.url,caption:i===0?text:undefined,parse_mode:i===0?'HTML':undefined};
+    // Album - send each photo separately then send text
+    var photoPromises=photos.slice(0,10).map(function(p){
+      var b64=p.url.split(',')[1];
+      var bin=atob(b64);
+      var arr=new Uint8Array(bin.length);
+      for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+      var blob=new Blob([arr],{type:'image/jpeg'});
+      var fd=new FormData();
+      fd.append('chat_id',channel);
+      fd.append('photo',blob,'photo.jpg');
+      return fetch(apiBase+'/sendPhoto',{method:'POST',body:fd}).then(function(r){return r.json();});
     });
-    promise=fetch(apiBase+'/sendMediaGroup',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({chat_id:channel,media:media})
-    }).then(function(r){return r.json();});
+    promise=Promise.all(photoPromises).then(function(results){
+      // Send caption as separate message
+      return fetch(apiBase+'/sendMessage',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({chat_id:channel,text:text})
+      }).then(function(r){return r.json();});
+    });
   }
 
   promise.then(function(result){
@@ -3206,16 +3291,35 @@ function selectEventForPublish(fbKey){
 }
 
 // Photo upload (using base64 stored in Firebase - no Storage needed!)
+function compressImage(file, maxWidth, quality, callback){
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var img=new Image();
+    img.onload=function(){
+      var canvas=document.createElement('canvas');
+      var w=img.width, h=img.height;
+      if(w>maxWidth){h=Math.round(h*maxWidth/w);w=maxWidth;}
+      canvas.width=w; canvas.height=h;
+      var ctx=canvas.getContext('2d');
+      ctx.drawImage(img,0,0,w,h);
+      callback(canvas.toDataURL('image/jpeg',quality));
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 function uploadPhotos(input){
   if(!selectedEventForPublish){toast('Сначала выберите ивент','err');return;}
   var files=Array.from(input.files);
   if(!files.length)return;
+  toast('Сжимаю и загружаю...','ok');
   var count=0;
   files.forEach(function(file){
-    var reader=new FileReader();
-    reader.onload=function(e){
+    // Compress to max 1200px width, 75% quality (~100-200KB)
+    compressImage(file, 1200, 0.75, function(compressed){
       var photoData={
-        url:e.target.result,
+        url:compressed,
         name:file.name,
         eventId:selectedEventForPublish.fbKey,
         uploadedAt:Date.now(),
@@ -3224,13 +3328,13 @@ function uploadPhotos(input){
       db.ref('photos').push(photoData,function(){
         count++;
         if(count===files.length){
-          toast(files.length+' фото загружено','ok');
+          toast(files.length+' фото загружено!','ok');
           loadPhotosForEvent(selectedEventForPublish.fbKey);
         }
       });
-    };
-    reader.readAsDataURL(file);
+    });
   });
+  input.value='';
 }
 
 function loadPhotosForEvent(eventId){
@@ -3370,20 +3474,37 @@ function doPublish(token,channel,text,lang,ev,btn){
       body:JSON.stringify({chat_id:channel,text:text,parse_mode:'HTML'})
     }).then(function(r){return r.json();});
   } else if(photos.length===1){
-    // Single photo
-    promise=fetch(apiBase+'/sendPhoto',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({chat_id:channel,photo:photos[0].url,caption:text,parse_mode:'HTML'})
-    }).then(function(r){return r.json();});
+    // Single photo - send as multipart form
+    var b64=photos[0].url.split(',')[1];
+    var bin=atob(b64);
+    var arr=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+    var blob=new Blob([arr],{type:'image/jpeg'});
+    var fd=new FormData();
+    fd.append('chat_id',channel);
+    fd.append('photo',blob,'photo.jpg');
+    fd.append('caption',text);
+    promise=fetch(apiBase+'/sendPhoto',{method:'POST',body:fd}).then(function(r){return r.json();});
   } else {
-    // Album (media group) - up to 10 photos
-    var media=photos.slice(0,10).map(function(p,i){
-      return {type:'photo',media:p.url,caption:i===0?text:undefined,parse_mode:i===0?'HTML':undefined};
+    // Album - send each photo separately then send text
+    var photoPromises=photos.slice(0,10).map(function(p){
+      var b64=p.url.split(',')[1];
+      var bin=atob(b64);
+      var arr=new Uint8Array(bin.length);
+      for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+      var blob=new Blob([arr],{type:'image/jpeg'});
+      var fd=new FormData();
+      fd.append('chat_id',channel);
+      fd.append('photo',blob,'photo.jpg');
+      return fetch(apiBase+'/sendPhoto',{method:'POST',body:fd}).then(function(r){return r.json();});
     });
-    promise=fetch(apiBase+'/sendMediaGroup',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({chat_id:channel,media:media})
-    }).then(function(r){return r.json();});
+    promise=Promise.all(photoPromises).then(function(results){
+      // Send caption as separate message
+      return fetch(apiBase+'/sendMessage',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({chat_id:channel,text:text})
+      }).then(function(r){return r.json();});
+    });
   }
 
   promise.then(function(result){
