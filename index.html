@@ -3351,7 +3351,7 @@ function uploadPhotos(input){
   var count=0;
   files.forEach(function(file){
     // Compress to max 1200px width, 75% quality (~100-200KB)
-    compressImage(file, 1200, 0.75, function(compressed){
+    compressImage(file, 800, 0.6, function(compressed){
       var photoData={
         url:compressed,
         name:file.name,
@@ -3631,13 +3631,18 @@ function doPublish(token,channel,text,lang,ev,btn,photoIds){
 
   } else if(photos.length===1){
     // Single photo with caption
+    var blob=b64toBlob(photos[0].url);
+    console.log('Photo blob size:',blob.size,'bytes');
     var fd=new FormData();
     fd.append('chat_id',channel);
-    fd.append('photo',b64toBlob(photos[0].url),'photo.jpg');
+    fd.append('photo',blob,'photo.jpg');
     fd.append('caption',text);
     fetch(apiBase+'/sendPhoto',{method:'POST',body:fd})
       .then(function(r){return r.json();})
-      .then(function(r){saveResult(r.ok,r.description);})
+      .then(function(r){
+        console.log('sendPhoto result:',JSON.stringify(r));
+        saveResult(r.ok,r.description);
+      })
       .catch(function(e){saveResult(false,e.message);});
 
   } else {
@@ -3648,21 +3653,27 @@ function doPublish(token,channel,text,lang,ev,btn,photoIds){
     var mediaArr=[];
     photos.slice(0,10).forEach(function(p,i){
       var fname='file'+i;
-      fd.append(fname, b64toBlob(p.url), fname+'.jpg');
+      var blob=b64toBlob(p.url);
+      console.log('Photo',i,'size:',blob.size,'bytes');
+      fd.append(fname, blob, fname+'.jpg');
       var m={type:'photo', media:'attach://'+fname};
       if(i===0){m.caption=text;}
       mediaArr.push(m);
     });
     fd.append('media', JSON.stringify(mediaArr));
+    console.log('Sending album with',mediaArr.length,'photos');
     fetch(apiBase+'/sendMediaGroup',{method:'POST',body:fd})
       .then(function(r){return r.json();})
       .then(function(r){
-        // sendMediaGroup returns array
+        console.log('sendMediaGroup result:',JSON.stringify(r));
         var ok=Array.isArray(r)? r[0].ok : r.ok;
         var desc=Array.isArray(r)? r[0].description : r.description;
         saveResult(ok, desc);
       })
-      .catch(function(e){saveResult(false,e.message);});
+      .catch(function(e){
+        console.error('sendMediaGroup error:',e);
+        saveResult(false,e.message);
+      });
   }
 }function doPublish(token,channel,text,lang,ev,btn,photoIds){
   var photos=selectedPhotos;
