@@ -3479,6 +3479,84 @@ function doPublish(token,channel,text,lang,ev,btn,photoIds){
   var apiBase='https://api.telegram.org/bot'+token;
   var promise;
 
+  function b64toBlob(dataUrl,i){
+    var b64=dataUrl.split(',')[1];
+    var bin=atob(b64);
+    var arr=new Uint8Array(bin.length);
+    for(var j=0;j<bin.length;j++)arr[j]=bin.charCodeAt(j);
+    return new Blob([arr],{type:'image/jpeg'});
+  }
+
+  if(photos.length===0){
+    // Text only
+    promise=fetch(apiBase+'/sendMessage',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:channel,text:text})
+    }).then(function(r){return r.json();});
+
+  } else if(photos.length===1){
+    // Single photo with caption
+    var fd=new FormData();
+    fd.append('chat_id',channel);
+    fd.append('photo',b64toBlob(photos[0].url),'photo.jpg');
+    fd.append('caption',text);
+    promise=fetch(apiBase+'/sendPhoto',{method:'POST',body:fd}).then(function(r){return r.json();});
+
+  } else {
+    // Album via sendMediaGroup — caption only on first photo
+    var fd=new FormData();
+    fd.append('chat_id',channel);
+    var mediaArr=[];
+    photos.slice(0,10).forEach(function(p,i){
+      var fieldName='photo'+i;
+      fd.append(fieldName,b64toBlob(p.url,i),fieldName+'.jpg');
+      var mediaObj={type:'photo',media:'attach://'+fieldName};
+      if(i===0){
+        mediaObj.caption=text;
+        mediaObj.parse_mode='HTML';
+      }
+      mediaArr.push(mediaObj);
+    });
+    fd.append('media',JSON.stringify(mediaArr));
+    promise=fetch(apiBase+'/sendMediaGroup',{method:'POST',body:fd}).then(function(r){return r.json();});
+  }
+
+  promise.then(function(result){
+    var ok=Array.isArray(result)?result[0].ok:result.ok;
+    if(ok){
+      var postData={
+        eventId:ev.fbKey,eventName:ev.name,
+        text:text,lang:lang,
+        photoCount:photos.length,
+        photoIds:photoIds||'',
+        channel:'telegram',
+        status:'published',
+        publishedAt:Date.now(),
+        postUrl:'https://t.me/'+channel.replace('@','')
+      };
+      db.ref('posts').push(postData);
+      db.ref('events/'+ev.fbKey).update({publishStatus:'published'});
+      photos.forEach(function(p){db.ref('photos/'+p.fbKey).update({used:true});});
+      toast('Опубликовано в Telegram!','ok');
+      renderPubEvents();
+      renderPostLog();
+    } else {
+      var errMsg=(Array.isArray(result)?result[0].description:result.description)||'Неизвестная ошибка';
+      db.ref('posts').push({eventId:ev.fbKey,eventName:ev.name,channel:'telegram',status:'failed',error:errMsg,publishedAt:Date.now()});
+      toast('Ошибка: '+errMsg,'err');
+      renderPostLog();
+    }
+    if(btn){btn.textContent='Telegram (рус)';btn.disabled=false;}
+  }).catch(function(e){
+    toast('Ошибка сети: '+e.message,'err');
+    if(btn){btn.textContent='Telegram (рус)';btn.disabled=false;}
+  });
+}function doPublish(token,channel,text,lang,ev,btn,photoIds){
+  var photos=selectedPhotos;
+  var apiBase='https://api.telegram.org/bot'+token;
+  var promise;
+
   if(photos.length===0){
     // Text only
     promise=fetch(apiBase+'/sendMessage',{
