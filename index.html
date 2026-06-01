@@ -5,11 +5,1941 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Bardak Studio × SealMary</title>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js">
+// ===== PUBLISH MODULE =====
+var selectedEventForPublish = null;
+var selectedPhotos = []; // [{url, name, id}]
+var uploadedPhotos = {}; // eventId -> [{url, name, id, used}]
+var posts = [];
+var settings = {tgToken:'8822476479:AAHb4B2Mu65cvWbaX_uDHuV4SsJMYNqhXrE', tgChannel:'-1003347726742', autoPublish:false, defaultLang:'ru'};
+var currentLang = 'ru';
+
+// Load settings from Firebase
+function loadSettings(){
+  db.ref('settings').once('value',function(snap){
+    if(snap.val()) Object.assign(settings, snap.val());
+    applySettings();
+  });
+}
+function applySettings(){
+  var tf=document.getElementById('s-tg-token');
+  var cf=document.getElementById('s-tg-channel');
+  var lf=document.getElementById('s-default-lang');
+  if(tf)tf.value=settings.tgToken||'';
+  if(cf)cf.value=settings.tgChannel||'';
+  if(lf)lf.value=settings.defaultLang||'ru';
+  updateToggleUI();
+}
+function saveSetting(key,inputId){
+  var val=document.getElementById(inputId).value.trim();
+  settings[key]=val;
+  db.ref('settings/'+key).set(val);
+  toast('Сохранено','ok');
+}
+function toggleAutoPublish(){
+  settings.autoPublish=!settings.autoPublish;
+  db.ref('settings/autoPublish').set(settings.autoPublish);
+  updateToggleUI();
+  toast(settings.autoPublish?'Автопубликация включена':'Черновики включены', settings.autoPublish?'ok':'warn');
+}
+function updateToggleUI(){
+  var btn=document.getElementById('toggle-auto');
+  var lbl=document.getElementById('toggle-auto-lbl');
+  if(!btn)return;
+  btn.className='toggle'+(settings.autoPublish?' on':'');
+  if(lbl)lbl.textContent=settings.autoPublish?'Вкл — автопубликация':'Выкл — черновики';
+}
+
+// Render events list in publish tab
+function renderPubEvents(){
+  var el=document.getElementById('pub-events-list');if(!el)return;
+  if(!events.length){el.innerHTML='<div class="empty">Нет ивентов — создайте их на вкладке «Ивенты»</div>';return;}
+  el.innerHTML=events.map(function(ev){
+    var evSales=sales.filter(function(s){return s.eventId===ev.fbKey;});
+    var evTotal=evSales.reduce(function(a,s){return a+s.price;},0);
+    var photos=uploadedPhotos[ev.fbKey]||[];
+    var today=new Date().toISOString().slice(0,10);
+    var isActive=ev.startDate<=today&&ev.endDate>=today;
+    var isPast=ev.endDate<today;
+    return '<div class="pub-event-card'+(selectedEventForPublish&&selectedEventForPublish.fbKey===ev.fbKey?' selected':'')+'" onclick="selectEventForPublish(''+ev.fbKey+'')">'+
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+        '<div class="event-dot" style="background:'+(isActive?'var(--k)':isPast?'var(--muted)':'var(--gold)')+'"></div>'+
+        '<div style="flex:1">'+
+          '<div style="font-weight:700;font-size:15px">'+ev.name+'</div>'+
+          '<div style="font-size:12px;color:var(--muted)">'+ev.startDate+(ev.endDate!==ev.startDate?' → '+ev.endDate:'')+(ev.location?' • '+ev.location:'')+'</div>'+
+        '</div>'+
+        '<div style="display:flex;gap:8px;align-items:center">'+
+          '<span style="font-size:12px;color:var(--muted)">📸 '+photos.length+' фото</span>'+
+          '<span style="font-size:12px;color:var(--muted)">💰 '+fmt(evTotal)+'</span>'+
+          (ev.publishStatus?'<span class="status-badge '+ev.publishStatus+'">'+ev.publishStatus+'</span>':'<span class="status-badge draft">черновик</span>')+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+function selectEventForPublish(fbKey){
+  selectedEventForPublish=events.find(function(e){return e.fbKey===fbKey;});
+  selectedPhotos=[];
+  renderPubEvents();
+  document.getElementById('pub-workspace').style.display='block';
+  renderPhotoGrid();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// Photo upload (using base64 stored in Firebase - no Storage needed!)
+function uploadPhotos(input){
+  if(!selectedEventForPublish){toast('Сначала выберите ивент','err');return;}
+  var files=Array.from(input.files);
+  if(!files.length)return;
+  var count=0;
+  files.forEach(function(file){
+    var reader=new FileReader();
+    reader.onload=function(e){
+      var photoData={
+        url:e.target.result,
+        name:file.name,
+        eventId:selectedEventForPublish.fbKey,
+        uploadedAt:Date.now(),
+        used:false
+      };
+      db.ref('photos').push(photoData,function(){
+        count++;
+        if(count===files.length){
+          toast(files.length+' фото загружено','ok');
+          loadPhotosForEvent(selectedEventForPublish.fbKey);
+        }
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadPhotosForEvent(eventId){
+  db.ref('photos').orderByChild('eventId').equalTo(eventId).once('value',function(snap){
+    var photos=[];
+    snap.forEach(function(c){photos.push(Object.assign({fbKey:c.key},c.val()));});
+    uploadedPhotos[eventId]=photos;
+    renderPhotoGrid();
+  });
+}
+
+function renderPhotoGrid(){
+  var grid=document.getElementById('photo-grid');if(!grid)return;
+  var eventId=selectedEventForPublish?selectedEventForPublish.fbKey:null;
+  var photos=eventId?(uploadedPhotos[eventId]||[]):[];
+  if(!photos.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1">Загрузите фотографии для этого ивента</div>';return;}
+  grid.innerHTML=photos.map(function(p){
+    var isSel=selectedPhotos.findIndex(function(x){return x.fbKey===p.fbKey;})>=0;
+    return '<div class="photo-item'+(isSel?' selected':'')+'" onclick="togglePhoto(''+p.fbKey+'')">'+
+      '<img src="'+p.url+'" alt="'+p.name+'">'+
+      '<div class="check">✓</div>'+
+      '<button class="photo-del" onclick="deletePhoto(event,''+p.fbKey+'')">✕</button>'+
+    '</div>';
+  }).join('');
+}
+
+function togglePhoto(fbKey){
+  var eventId=selectedEventForPublish.fbKey;
+  var photos=uploadedPhotos[eventId]||[];
+  var photo=photos.find(function(p){return p.fbKey===fbKey;});if(!photo)return;
+  var idx=selectedPhotos.findIndex(function(p){return p.fbKey===fbKey;});
+  if(idx>=0)selectedPhotos.splice(idx,1);
+  else selectedPhotos.push(photo);
+  renderPhotoGrid();
+  updatePreview();
+}
+
+function deletePhoto(e,fbKey){
+  e.stopPropagation();
+  if(!confirm('Удалить фото?'))return;
+  db.ref('photos/'+fbKey).remove();
+  var eventId=selectedEventForPublish.fbKey;
+  uploadedPhotos[eventId]=(uploadedPhotos[eventId]||[]).filter(function(p){return p.fbKey!==fbKey;});
+  selectedPhotos=selectedPhotos.filter(function(p){return p.fbKey!==fbKey;});
+  renderPhotoGrid();
+}
+
+// Language switcher
+function switchLang(lang,btn){
+  currentLang=lang;
+  document.querySelectorAll('.lang-btn').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  ['ru','en','ko'].forEach(function(l){
+    var ta=document.getElementById('post-text-'+l);
+    if(ta)ta.style.display=l===lang?'block':'none';
+  });
+}
+
+// AI post generation
+function generatePost(){
+  if(!selectedEventForPublish){toast('Сначала выберите ивент','err');return;}
+  var btn=document.getElementById('gen-btn');
+  btn.textContent='⏳ Генерирую...';btn.disabled=true;
+  var ev=selectedEventForPublish;
+  var evSales=sales.filter(function(s){return s.eventId===ev.fbKey;});
+  var total=evSales.reduce(function(a,s){return a+s.price;},0);
+  var prompt='Напиши пост для Telegram канала магазина Bardak Studio о прошедшем мероприятии. '+
+    'Мероприятие: "'+ev.name+'". '+
+    'Дата: '+ev.startDate+(ev.endDate!==ev.startDate?' — '+ev.endDate:'')+'. '+
+    (ev.location?'Место: '+ev.location+'. ':'')+
+    (ev.description?'Описание: '+ev.description+'. ':'')+
+    (total>0?'Выручка: '+fmt(total)+'. ':'')+
+    (ev.hashtags?'Хэштеги: '+ev.hashtags+'. ':'')+
+    'Напиши три версии поста: на русском, английском и корейском. '+
+    'Пиши живым дружелюбным языком, без шаблонных фраз. Каждую версию оберни в теги <ru>...</ru> <en>...</en> <ko>...</ko>. '+
+    'Добавь эмодзи. Текст не длиннее 300 символов каждый.';
+
+  fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:1000,
+      messages:[{role:'user',content:prompt}]
+    })
+  }).then(function(r){return r.json();})
+  .then(function(data){
+    var text=data.content[0].text;
+    var ru=text.match(/<ru>([\s\S]*?)<\/ru>/);
+    var en=text.match(/<en>([\s\S]*?)<\/en>/);
+    var ko=text.match(/<ko>([\s\S]*?)<\/ko>/);
+    if(ru)document.getElementById('post-text-ru').value=ru[1].trim();
+    if(en)document.getElementById('post-text-en').value=en[1].trim();
+    if(ko)document.getElementById('post-text-ko').value=ko[1].trim();
+    updatePreview();
+    toast('Пост сгенерирован!','ok');
+  }).catch(function(e){
+    toast('Ошибка генерации','err');console.error(e);
+  }).finally(function(){
+    btn.textContent='✨ Сгенерировать через AI';btn.disabled=false;
+  });
+}
+
+// Preview
+function updatePreview(){
+  var lang=currentLang;
+  var text=document.getElementById('post-text-'+lang).value;
+  document.getElementById('preview-text').textContent=text||'Введите текст поста';
+  var photosHtml=selectedPhotos.map(function(p){
+    return '<img class="preview-photo" src="'+p.url+'">';
+  }).join('');
+  document.getElementById('preview-photos').innerHTML=photosHtml;
+}
+
+// Publish to Telegram
+function publishToTelegram(lang){
+  var token=settings.tgToken;
+  var channel=settings.tgChannel;
+  if(!token||!channel){toast('Укажите Bot Token и Channel ID в настройках','err');return;}
+  var text=document.getElementById('post-text-'+lang).value;
+  var ev=selectedEventForPublish;
+  if(!ev){toast('Выберите ивент','err');return;}
+  if(!text){toast('Введите текст поста','err');return;}
+
+  var btn=document.getElementById('pub-btn-ru');
+  if(btn){btn.textContent='⏳ Публикуем...';btn.disabled=true;}
+
+  // Check for duplicates
+  db.ref('posts').orderByChild('eventId').equalTo(ev.fbKey).once('value',function(snap){
+    var existing=[];
+    snap.forEach(function(c){existing.push(c.val());});
+    var alreadyPublished=existing.find(function(p){return p.status==='published'&&p.channel==='telegram'&&p.lang===lang;});
+    if(alreadyPublished){
+      toast('Этот пост уже был опубликован!','warn');
+      if(btn){btn.textContent='📤 Telegram (рус)';btn.disabled=false;}
+      return;
+    }
+    doPublish(token,channel,text,lang,ev,btn);
+  });
+}
+
+function doPublish(token,channel,text,lang,ev,btn){
+  var photos=selectedPhotos;
+  var apiBase='https://api.telegram.org/bot'+token;
+  var promise;
+
+  if(photos.length===0){
+    // Text only
+    promise=fetch(apiBase+'/sendMessage',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:channel,text:text,parse_mode:'HTML'})
+    }).then(function(r){return r.json();});
+  } else if(photos.length===1){
+    // Single photo
+    promise=fetch(apiBase+'/sendPhoto',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:channel,photo:photos[0].url,caption:text,parse_mode:'HTML'})
+    }).then(function(r){return r.json();});
+  } else {
+    // Album (media group) - up to 10 photos
+    var media=photos.slice(0,10).map(function(p,i){
+      return {type:'photo',media:p.url,caption:i===0?text:undefined,parse_mode:i===0?'HTML':undefined};
+    });
+    promise=fetch(apiBase+'/sendMediaGroup',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:channel,media:media})
+    }).then(function(r){return r.json();});
+  }
+
+  promise.then(function(result){
+    if(result.ok){
+      // Save to posts log
+      var postData={
+        eventId:ev.fbKey,eventName:ev.name,
+        text:text,lang:lang,
+        photoCount:photos.length,
+        channel:'telegram',
+        status:'published',
+        publishedAt:Date.now(),
+        postUrl:'https://t.me/'+channel.replace('@','')
+      };
+      db.ref('posts').push(postData);
+      // Mark event as published
+      db.ref('events/'+ev.fbKey).update({publishStatus:'published'});
+      // Mark photos as used
+      photos.forEach(function(p){db.ref('photos/'+p.fbKey).update({used:true});});
+      toast('✅ Опубликовано в Telegram!','ok');
+      renderPubEvents();
+      renderPostLog();
+    } else {
+      var errMsg=result.description||'Неизвестная ошибка';
+      db.ref('posts').push({eventId:ev.fbKey,eventName:ev.name,channel:'telegram',status:'failed',error:errMsg,publishedAt:Date.now()});
+      toast('Ошибка: '+errMsg,'err');
+      renderPostLog();
+    }
+    if(btn){btn.textContent='📤 Telegram (рус)';btn.disabled=false;}
+  }).catch(function(e){
+    toast('Ошибка сети','err');
+    if(btn){btn.textContent='📤 Telegram (рус)';btn.disabled=false;}
+  });
+}
+
+function saveDraft(){
+  if(!selectedEventForPublish){toast('Выберите ивент','err');return;}
+  var ev=selectedEventForPublish;
+  db.ref('posts').push({
+    eventId:ev.fbKey,eventName:ev.name,
+    textRu:document.getElementById('post-text-ru').value,
+    textEn:document.getElementById('post-text-en').value,
+    textKo:document.getElementById('post-text-ko').value,
+    photoCount:selectedPhotos.length,
+    channel:'telegram',
+    status:'draft',
+    createdAt:Date.now()
+  });
+  db.ref('events/'+ev.fbKey).update({publishStatus:'draft'});
+  toast('Черновик сохранён','ok');
+  renderPostLog();
+}
+
+// Post log
+function renderPostLog(){
+  db.ref('posts').orderByChild('publishedAt').limitToLast(30).once('value',function(snap){
+    posts=[];snap.forEach(function(c){posts.push(Object.assign({fbKey:c.key},c.val()));});
+    posts.reverse();
+    var el=document.getElementById('post-log');if(!el)return;
+    if(!posts.length){el.innerHTML='<div class="empty">Нет публикаций</div>';return;}
+    el.innerHTML=posts.map(function(p){
+      var t=p.publishedAt?new Date(p.publishedAt).toLocaleString('ru-RU'):'—';
+      return '<div class="post-log-row">'+
+        '<span class="status-badge '+p.status+'">'+p.status+'</span>'+
+        '<span style="font-weight:700;flex:1">'+p.eventName+'</span>'+
+        '<span class="bdg" style="background:#F1EFE8;color:#5F5E5A">'+p.channel+'</span>'+
+        '<span style="font-size:12px;color:var(--muted)">'+t+'</span>'+
+        (p.postUrl?'<a href="'+p.postUrl+'" target="_blank" class="btn sm" style="text-decoration:none">🔗</a>':'')+
+        (p.error?'<span style="font-size:11px;color:var(--danger)">'+p.error+'</span>':'')+
+      '</div>';
+    }).join('');
+  });
+}
+
+// Test Telegram
+function testTelegram(){
+  var token=document.getElementById('s-tg-token').value.trim();
+  var channel=document.getElementById('s-tg-channel').value.trim();
+  if(!token||!channel){toast('Заполните токен и ID канала','err');return;}
+  fetch('https://api.telegram.org/bot'+token+'/sendMessage',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({chat_id:channel,text:'✅ Bardak Studio Bot подключён! Всё работает 🐱'})
+  }).then(function(r){return r.json();}).then(function(r){
+    if(r.ok)toast('✅ Тест прошёл!','ok');
+    else toast('Ошибка: '+r.description,'err');
+  }).catch(function(){toast('Ошибка сети','err');});
+}
+
+// Override startListeners to also load posts/settings
+var _origStartListeners=startListeners;
+startListeners=function(){
+  _origStartListeners();
+  loadSettings();
+  renderPostLog();
+  // Watch events changes to update publish tab
+  db.ref('events').on('value',function(){
+    renderPubEvents();
+  });
+};
+
+// Override goTab to load photos when switching to publish
+var _origGoTab=goTab;
+goTab=function(name,btn){
+  _origGoTab(name,btn);
+  if(name==='publish'){
+    renderPubEvents();
+    renderPostLog();
+    if(selectedEventForPublish)loadPhotosForEvent(selectedEventForPublish.fbKey);
+  }
+};
+
+</script>
+<script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js">
+// ===== PUBLISH MODULE =====
+var selectedEventForPublish = null;
+var selectedPhotos = []; // [{url, name, id}]
+var uploadedPhotos = {}; // eventId -> [{url, name, id, used}]
+var posts = [];
+var settings = {tgToken:'8822476479:AAHb4B2Mu65cvWbaX_uDHuV4SsJMYNqhXrE', tgChannel:'-1003347726742', autoPublish:false, defaultLang:'ru'};
+var currentLang = 'ru';
+
+// Load settings from Firebase
+function loadSettings(){
+  db.ref('settings').once('value',function(snap){
+    if(snap.val()) Object.assign(settings, snap.val());
+    applySettings();
+  });
+}
+function applySettings(){
+  var tf=document.getElementById('s-tg-token');
+  var cf=document.getElementById('s-tg-channel');
+  var lf=document.getElementById('s-default-lang');
+  if(tf)tf.value=settings.tgToken||'';
+  if(cf)cf.value=settings.tgChannel||'';
+  if(lf)lf.value=settings.defaultLang||'ru';
+  updateToggleUI();
+}
+function saveSetting(key,inputId){
+  var val=document.getElementById(inputId).value.trim();
+  settings[key]=val;
+  db.ref('settings/'+key).set(val);
+  toast('Сохранено','ok');
+}
+function toggleAutoPublish(){
+  settings.autoPublish=!settings.autoPublish;
+  db.ref('settings/autoPublish').set(settings.autoPublish);
+  updateToggleUI();
+  toast(settings.autoPublish?'Автопубликация включена':'Черновики включены', settings.autoPublish?'ok':'warn');
+}
+function updateToggleUI(){
+  var btn=document.getElementById('toggle-auto');
+  var lbl=document.getElementById('toggle-auto-lbl');
+  if(!btn)return;
+  btn.className='toggle'+(settings.autoPublish?' on':'');
+  if(lbl)lbl.textContent=settings.autoPublish?'Вкл — автопубликация':'Выкл — черновики';
+}
+
+// Render events list in publish tab
+function renderPubEvents(){
+  var el=document.getElementById('pub-events-list');if(!el)return;
+  if(!events.length){el.innerHTML='<div class="empty">Нет ивентов — создайте их на вкладке «Ивенты»</div>';return;}
+  el.innerHTML=events.map(function(ev){
+    var evSales=sales.filter(function(s){return s.eventId===ev.fbKey;});
+    var evTotal=evSales.reduce(function(a,s){return a+s.price;},0);
+    var photos=uploadedPhotos[ev.fbKey]||[];
+    var today=new Date().toISOString().slice(0,10);
+    var isActive=ev.startDate<=today&&ev.endDate>=today;
+    var isPast=ev.endDate<today;
+    return '<div class="pub-event-card'+(selectedEventForPublish&&selectedEventForPublish.fbKey===ev.fbKey?' selected':'')+'" onclick="selectEventForPublish(''+ev.fbKey+'')">'+
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+        '<div class="event-dot" style="background:'+(isActive?'var(--k)':isPast?'var(--muted)':'var(--gold)')+'"></div>'+
+        '<div style="flex:1">'+
+          '<div style="font-weight:700;font-size:15px">'+ev.name+'</div>'+
+          '<div style="font-size:12px;color:var(--muted)">'+ev.startDate+(ev.endDate!==ev.startDate?' → '+ev.endDate:'')+(ev.location?' • '+ev.location:'')+'</div>'+
+        '</div>'+
+        '<div style="display:flex;gap:8px;align-items:center">'+
+          '<span style="font-size:12px;color:var(--muted)">📸 '+photos.length+' фото</span>'+
+          '<span style="font-size:12px;color:var(--muted)">💰 '+fmt(evTotal)+'</span>'+
+          (ev.publishStatus?'<span class="status-badge '+ev.publishStatus+'">'+ev.publishStatus+'</span>':'<span class="status-badge draft">черновик</span>')+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+function selectEventForPublish(fbKey){
+  selectedEventForPublish=events.find(function(e){return e.fbKey===fbKey;});
+  selectedPhotos=[];
+  renderPubEvents();
+  document.getElementById('pub-workspace').style.display='block';
+  renderPhotoGrid();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// Photo upload (using base64 stored in Firebase - no Storage needed!)
+function uploadPhotos(input){
+  if(!selectedEventForPublish){toast('Сначала выберите ивент','err');return;}
+  var files=Array.from(input.files);
+  if(!files.length)return;
+  var count=0;
+  files.forEach(function(file){
+    var reader=new FileReader();
+    reader.onload=function(e){
+      var photoData={
+        url:e.target.result,
+        name:file.name,
+        eventId:selectedEventForPublish.fbKey,
+        uploadedAt:Date.now(),
+        used:false
+      };
+      db.ref('photos').push(photoData,function(){
+        count++;
+        if(count===files.length){
+          toast(files.length+' фото загружено','ok');
+          loadPhotosForEvent(selectedEventForPublish.fbKey);
+        }
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadPhotosForEvent(eventId){
+  db.ref('photos').orderByChild('eventId').equalTo(eventId).once('value',function(snap){
+    var photos=[];
+    snap.forEach(function(c){photos.push(Object.assign({fbKey:c.key},c.val()));});
+    uploadedPhotos[eventId]=photos;
+    renderPhotoGrid();
+  });
+}
+
+function renderPhotoGrid(){
+  var grid=document.getElementById('photo-grid');if(!grid)return;
+  var eventId=selectedEventForPublish?selectedEventForPublish.fbKey:null;
+  var photos=eventId?(uploadedPhotos[eventId]||[]):[];
+  if(!photos.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1">Загрузите фотографии для этого ивента</div>';return;}
+  grid.innerHTML=photos.map(function(p){
+    var isSel=selectedPhotos.findIndex(function(x){return x.fbKey===p.fbKey;})>=0;
+    return '<div class="photo-item'+(isSel?' selected':'')+'" onclick="togglePhoto(''+p.fbKey+'')">'+
+      '<img src="'+p.url+'" alt="'+p.name+'">'+
+      '<div class="check">✓</div>'+
+      '<button class="photo-del" onclick="deletePhoto(event,''+p.fbKey+'')">✕</button>'+
+    '</div>';
+  }).join('');
+}
+
+function togglePhoto(fbKey){
+  var eventId=selectedEventForPublish.fbKey;
+  var photos=uploadedPhotos[eventId]||[];
+  var photo=photos.find(function(p){return p.fbKey===fbKey;});if(!photo)return;
+  var idx=selectedPhotos.findIndex(function(p){return p.fbKey===fbKey;});
+  if(idx>=0)selectedPhotos.splice(idx,1);
+  else selectedPhotos.push(photo);
+  renderPhotoGrid();
+  updatePreview();
+}
+
+function deletePhoto(e,fbKey){
+  e.stopPropagation();
+  if(!confirm('Удалить фото?'))return;
+  db.ref('photos/'+fbKey).remove();
+  var eventId=selectedEventForPublish.fbKey;
+  uploadedPhotos[eventId]=(uploadedPhotos[eventId]||[]).filter(function(p){return p.fbKey!==fbKey;});
+  selectedPhotos=selectedPhotos.filter(function(p){return p.fbKey!==fbKey;});
+  renderPhotoGrid();
+}
+
+// Language switcher
+function switchLang(lang,btn){
+  currentLang=lang;
+  document.querySelectorAll('.lang-btn').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  ['ru','en','ko'].forEach(function(l){
+    var ta=document.getElementById('post-text-'+l);
+    if(ta)ta.style.display=l===lang?'block':'none';
+  });
+}
+
+// AI post generation
+function generatePost(){
+  if(!selectedEventForPublish){toast('Сначала выберите ивент','err');return;}
+  var btn=document.getElementById('gen-btn');
+  btn.textContent='⏳ Генерирую...';btn.disabled=true;
+  var ev=selectedEventForPublish;
+  var evSales=sales.filter(function(s){return s.eventId===ev.fbKey;});
+  var total=evSales.reduce(function(a,s){return a+s.price;},0);
+  var prompt='Напиши пост для Telegram канала магазина Bardak Studio о прошедшем мероприятии. '+
+    'Мероприятие: "'+ev.name+'". '+
+    'Дата: '+ev.startDate+(ev.endDate!==ev.startDate?' — '+ev.endDate:'')+'. '+
+    (ev.location?'Место: '+ev.location+'. ':'')+
+    (ev.description?'Описание: '+ev.description+'. ':'')+
+    (total>0?'Выручка: '+fmt(total)+'. ':'')+
+    (ev.hashtags?'Хэштеги: '+ev.hashtags+'. ':'')+
+    'Напиши три версии поста: на русском, английском и корейском. '+
+    'Пиши живым дружелюбным языком, без шаблонных фраз. Каждую версию оберни в теги <ru>...</ru> <en>...</en> <ko>...</ko>. '+
+    'Добавь эмодзи. Текст не длиннее 300 символов каждый.';
+
+  fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:1000,
+      messages:[{role:'user',content:prompt}]
+    })
+  }).then(function(r){return r.json();})
+  .then(function(data){
+    var text=data.content[0].text;
+    var ru=text.match(/<ru>([\s\S]*?)<\/ru>/);
+    var en=text.match(/<en>([\s\S]*?)<\/en>/);
+    var ko=text.match(/<ko>([\s\S]*?)<\/ko>/);
+    if(ru)document.getElementById('post-text-ru').value=ru[1].trim();
+    if(en)document.getElementById('post-text-en').value=en[1].trim();
+    if(ko)document.getElementById('post-text-ko').value=ko[1].trim();
+    updatePreview();
+    toast('Пост сгенерирован!','ok');
+  }).catch(function(e){
+    toast('Ошибка генерации','err');console.error(e);
+  }).finally(function(){
+    btn.textContent='✨ Сгенерировать через AI';btn.disabled=false;
+  });
+}
+
+// Preview
+function updatePreview(){
+  var lang=currentLang;
+  var text=document.getElementById('post-text-'+lang).value;
+  document.getElementById('preview-text').textContent=text||'Введите текст поста';
+  var photosHtml=selectedPhotos.map(function(p){
+    return '<img class="preview-photo" src="'+p.url+'">';
+  }).join('');
+  document.getElementById('preview-photos').innerHTML=photosHtml;
+}
+
+// Publish to Telegram
+function publishToTelegram(lang){
+  var token=settings.tgToken;
+  var channel=settings.tgChannel;
+  if(!token||!channel){toast('Укажите Bot Token и Channel ID в настройках','err');return;}
+  var text=document.getElementById('post-text-'+lang).value;
+  var ev=selectedEventForPublish;
+  if(!ev){toast('Выберите ивент','err');return;}
+  if(!text){toast('Введите текст поста','err');return;}
+
+  var btn=document.getElementById('pub-btn-ru');
+  if(btn){btn.textContent='⏳ Публикуем...';btn.disabled=true;}
+
+  // Check for duplicates
+  db.ref('posts').orderByChild('eventId').equalTo(ev.fbKey).once('value',function(snap){
+    var existing=[];
+    snap.forEach(function(c){existing.push(c.val());});
+    var alreadyPublished=existing.find(function(p){return p.status==='published'&&p.channel==='telegram'&&p.lang===lang;});
+    if(alreadyPublished){
+      toast('Этот пост уже был опубликован!','warn');
+      if(btn){btn.textContent='📤 Telegram (рус)';btn.disabled=false;}
+      return;
+    }
+    doPublish(token,channel,text,lang,ev,btn);
+  });
+}
+
+function doPublish(token,channel,text,lang,ev,btn){
+  var photos=selectedPhotos;
+  var apiBase='https://api.telegram.org/bot'+token;
+  var promise;
+
+  if(photos.length===0){
+    // Text only
+    promise=fetch(apiBase+'/sendMessage',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:channel,text:text,parse_mode:'HTML'})
+    }).then(function(r){return r.json();});
+  } else if(photos.length===1){
+    // Single photo
+    promise=fetch(apiBase+'/sendPhoto',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:channel,photo:photos[0].url,caption:text,parse_mode:'HTML'})
+    }).then(function(r){return r.json();});
+  } else {
+    // Album (media group) - up to 10 photos
+    var media=photos.slice(0,10).map(function(p,i){
+      return {type:'photo',media:p.url,caption:i===0?text:undefined,parse_mode:i===0?'HTML':undefined};
+    });
+    promise=fetch(apiBase+'/sendMediaGroup',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:channel,media:media})
+    }).then(function(r){return r.json();});
+  }
+
+  promise.then(function(result){
+    if(result.ok){
+      // Save to posts log
+      var postData={
+        eventId:ev.fbKey,eventName:ev.name,
+        text:text,lang:lang,
+        photoCount:photos.length,
+        channel:'telegram',
+        status:'published',
+        publishedAt:Date.now(),
+        postUrl:'https://t.me/'+channel.replace('@','')
+      };
+      db.ref('posts').push(postData);
+      // Mark event as published
+      db.ref('events/'+ev.fbKey).update({publishStatus:'published'});
+      // Mark photos as used
+      photos.forEach(function(p){db.ref('photos/'+p.fbKey).update({used:true});});
+      toast('✅ Опубликовано в Telegram!','ok');
+      renderPubEvents();
+      renderPostLog();
+    } else {
+      var errMsg=result.description||'Неизвестная ошибка';
+      db.ref('posts').push({eventId:ev.fbKey,eventName:ev.name,channel:'telegram',status:'failed',error:errMsg,publishedAt:Date.now()});
+      toast('Ошибка: '+errMsg,'err');
+      renderPostLog();
+    }
+    if(btn){btn.textContent='📤 Telegram (рус)';btn.disabled=false;}
+  }).catch(function(e){
+    toast('Ошибка сети','err');
+    if(btn){btn.textContent='📤 Telegram (рус)';btn.disabled=false;}
+  });
+}
+
+function saveDraft(){
+  if(!selectedEventForPublish){toast('Выберите ивент','err');return;}
+  var ev=selectedEventForPublish;
+  db.ref('posts').push({
+    eventId:ev.fbKey,eventName:ev.name,
+    textRu:document.getElementById('post-text-ru').value,
+    textEn:document.getElementById('post-text-en').value,
+    textKo:document.getElementById('post-text-ko').value,
+    photoCount:selectedPhotos.length,
+    channel:'telegram',
+    status:'draft',
+    createdAt:Date.now()
+  });
+  db.ref('events/'+ev.fbKey).update({publishStatus:'draft'});
+  toast('Черновик сохранён','ok');
+  renderPostLog();
+}
+
+// Post log
+function renderPostLog(){
+  db.ref('posts').orderByChild('publishedAt').limitToLast(30).once('value',function(snap){
+    posts=[];snap.forEach(function(c){posts.push(Object.assign({fbKey:c.key},c.val()));});
+    posts.reverse();
+    var el=document.getElementById('post-log');if(!el)return;
+    if(!posts.length){el.innerHTML='<div class="empty">Нет публикаций</div>';return;}
+    el.innerHTML=posts.map(function(p){
+      var t=p.publishedAt?new Date(p.publishedAt).toLocaleString('ru-RU'):'—';
+      return '<div class="post-log-row">'+
+        '<span class="status-badge '+p.status+'">'+p.status+'</span>'+
+        '<span style="font-weight:700;flex:1">'+p.eventName+'</span>'+
+        '<span class="bdg" style="background:#F1EFE8;color:#5F5E5A">'+p.channel+'</span>'+
+        '<span style="font-size:12px;color:var(--muted)">'+t+'</span>'+
+        (p.postUrl?'<a href="'+p.postUrl+'" target="_blank" class="btn sm" style="text-decoration:none">🔗</a>':'')+
+        (p.error?'<span style="font-size:11px;color:var(--danger)">'+p.error+'</span>':'')+
+      '</div>';
+    }).join('');
+  });
+}
+
+// Test Telegram
+function testTelegram(){
+  var token=document.getElementById('s-tg-token').value.trim();
+  var channel=document.getElementById('s-tg-channel').value.trim();
+  if(!token||!channel){toast('Заполните токен и ID канала','err');return;}
+  fetch('https://api.telegram.org/bot'+token+'/sendMessage',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({chat_id:channel,text:'✅ Bardak Studio Bot подключён! Всё работает 🐱'})
+  }).then(function(r){return r.json();}).then(function(r){
+    if(r.ok)toast('✅ Тест прошёл!','ok');
+    else toast('Ошибка: '+r.description,'err');
+  }).catch(function(){toast('Ошибка сети','err');});
+}
+
+// Override startListeners to also load posts/settings
+var _origStartListeners=startListeners;
+startListeners=function(){
+  _origStartListeners();
+  loadSettings();
+  renderPostLog();
+  // Watch events changes to update publish tab
+  db.ref('events').on('value',function(){
+    renderPubEvents();
+  });
+};
+
+// Override goTab to load photos when switching to publish
+var _origGoTab=goTab;
+goTab=function(name,btn){
+  _origGoTab(name,btn);
+  if(name==='publish'){
+    renderPubEvents();
+    renderPostLog();
+    if(selectedEventForPublish)loadPhotosForEvent(selectedEventForPublish.fbKey);
+  }
+};
+
+</script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js">
+// ===== PUBLISH MODULE =====
+var selectedEventForPublish = null;
+var selectedPhotos = []; // [{url, name, id}]
+var uploadedPhotos = {}; // eventId -> [{url, name, id, used}]
+var posts = [];
+var settings = {tgToken:'8822476479:AAHb4B2Mu65cvWbaX_uDHuV4SsJMYNqhXrE', tgChannel:'-1003347726742', autoPublish:false, defaultLang:'ru'};
+var currentLang = 'ru';
+
+// Load settings from Firebase
+function loadSettings(){
+  db.ref('settings').once('value',function(snap){
+    if(snap.val()) Object.assign(settings, snap.val());
+    applySettings();
+  });
+}
+function applySettings(){
+  var tf=document.getElementById('s-tg-token');
+  var cf=document.getElementById('s-tg-channel');
+  var lf=document.getElementById('s-default-lang');
+  if(tf)tf.value=settings.tgToken||'';
+  if(cf)cf.value=settings.tgChannel||'';
+  if(lf)lf.value=settings.defaultLang||'ru';
+  updateToggleUI();
+}
+function saveSetting(key,inputId){
+  var val=document.getElementById(inputId).value.trim();
+  settings[key]=val;
+  db.ref('settings/'+key).set(val);
+  toast('Сохранено','ok');
+}
+function toggleAutoPublish(){
+  settings.autoPublish=!settings.autoPublish;
+  db.ref('settings/autoPublish').set(settings.autoPublish);
+  updateToggleUI();
+  toast(settings.autoPublish?'Автопубликация включена':'Черновики включены', settings.autoPublish?'ok':'warn');
+}
+function updateToggleUI(){
+  var btn=document.getElementById('toggle-auto');
+  var lbl=document.getElementById('toggle-auto-lbl');
+  if(!btn)return;
+  btn.className='toggle'+(settings.autoPublish?' on':'');
+  if(lbl)lbl.textContent=settings.autoPublish?'Вкл — автопубликация':'Выкл — черновики';
+}
+
+// Render events list in publish tab
+function renderPubEvents(){
+  var el=document.getElementById('pub-events-list');if(!el)return;
+  if(!events.length){el.innerHTML='<div class="empty">Нет ивентов — создайте их на вкладке «Ивенты»</div>';return;}
+  el.innerHTML=events.map(function(ev){
+    var evSales=sales.filter(function(s){return s.eventId===ev.fbKey;});
+    var evTotal=evSales.reduce(function(a,s){return a+s.price;},0);
+    var photos=uploadedPhotos[ev.fbKey]||[];
+    var today=new Date().toISOString().slice(0,10);
+    var isActive=ev.startDate<=today&&ev.endDate>=today;
+    var isPast=ev.endDate<today;
+    return '<div class="pub-event-card'+(selectedEventForPublish&&selectedEventForPublish.fbKey===ev.fbKey?' selected':'')+'" onclick="selectEventForPublish(''+ev.fbKey+'')">'+
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+        '<div class="event-dot" style="background:'+(isActive?'var(--k)':isPast?'var(--muted)':'var(--gold)')+'"></div>'+
+        '<div style="flex:1">'+
+          '<div style="font-weight:700;font-size:15px">'+ev.name+'</div>'+
+          '<div style="font-size:12px;color:var(--muted)">'+ev.startDate+(ev.endDate!==ev.startDate?' → '+ev.endDate:'')+(ev.location?' • '+ev.location:'')+'</div>'+
+        '</div>'+
+        '<div style="display:flex;gap:8px;align-items:center">'+
+          '<span style="font-size:12px;color:var(--muted)">📸 '+photos.length+' фото</span>'+
+          '<span style="font-size:12px;color:var(--muted)">💰 '+fmt(evTotal)+'</span>'+
+          (ev.publishStatus?'<span class="status-badge '+ev.publishStatus+'">'+ev.publishStatus+'</span>':'<span class="status-badge draft">черновик</span>')+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+function selectEventForPublish(fbKey){
+  selectedEventForPublish=events.find(function(e){return e.fbKey===fbKey;});
+  selectedPhotos=[];
+  renderPubEvents();
+  document.getElementById('pub-workspace').style.display='block';
+  renderPhotoGrid();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// Photo upload (using base64 stored in Firebase - no Storage needed!)
+function uploadPhotos(input){
+  if(!selectedEventForPublish){toast('Сначала выберите ивент','err');return;}
+  var files=Array.from(input.files);
+  if(!files.length)return;
+  var count=0;
+  files.forEach(function(file){
+    var reader=new FileReader();
+    reader.onload=function(e){
+      var photoData={
+        url:e.target.result,
+        name:file.name,
+        eventId:selectedEventForPublish.fbKey,
+        uploadedAt:Date.now(),
+        used:false
+      };
+      db.ref('photos').push(photoData,function(){
+        count++;
+        if(count===files.length){
+          toast(files.length+' фото загружено','ok');
+          loadPhotosForEvent(selectedEventForPublish.fbKey);
+        }
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadPhotosForEvent(eventId){
+  db.ref('photos').orderByChild('eventId').equalTo(eventId).once('value',function(snap){
+    var photos=[];
+    snap.forEach(function(c){photos.push(Object.assign({fbKey:c.key},c.val()));});
+    uploadedPhotos[eventId]=photos;
+    renderPhotoGrid();
+  });
+}
+
+function renderPhotoGrid(){
+  var grid=document.getElementById('photo-grid');if(!grid)return;
+  var eventId=selectedEventForPublish?selectedEventForPublish.fbKey:null;
+  var photos=eventId?(uploadedPhotos[eventId]||[]):[];
+  if(!photos.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1">Загрузите фотографии для этого ивента</div>';return;}
+  grid.innerHTML=photos.map(function(p){
+    var isSel=selectedPhotos.findIndex(function(x){return x.fbKey===p.fbKey;})>=0;
+    return '<div class="photo-item'+(isSel?' selected':'')+'" onclick="togglePhoto(''+p.fbKey+'')">'+
+      '<img src="'+p.url+'" alt="'+p.name+'">'+
+      '<div class="check">✓</div>'+
+      '<button class="photo-del" onclick="deletePhoto(event,''+p.fbKey+'')">✕</button>'+
+    '</div>';
+  }).join('');
+}
+
+function togglePhoto(fbKey){
+  var eventId=selectedEventForPublish.fbKey;
+  var photos=uploadedPhotos[eventId]||[];
+  var photo=photos.find(function(p){return p.fbKey===fbKey;});if(!photo)return;
+  var idx=selectedPhotos.findIndex(function(p){return p.fbKey===fbKey;});
+  if(idx>=0)selectedPhotos.splice(idx,1);
+  else selectedPhotos.push(photo);
+  renderPhotoGrid();
+  updatePreview();
+}
+
+function deletePhoto(e,fbKey){
+  e.stopPropagation();
+  if(!confirm('Удалить фото?'))return;
+  db.ref('photos/'+fbKey).remove();
+  var eventId=selectedEventForPublish.fbKey;
+  uploadedPhotos[eventId]=(uploadedPhotos[eventId]||[]).filter(function(p){return p.fbKey!==fbKey;});
+  selectedPhotos=selectedPhotos.filter(function(p){return p.fbKey!==fbKey;});
+  renderPhotoGrid();
+}
+
+// Language switcher
+function switchLang(lang,btn){
+  currentLang=lang;
+  document.querySelectorAll('.lang-btn').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  ['ru','en','ko'].forEach(function(l){
+    var ta=document.getElementById('post-text-'+l);
+    if(ta)ta.style.display=l===lang?'block':'none';
+  });
+}
+
+// AI post generation
+function generatePost(){
+  if(!selectedEventForPublish){toast('Сначала выберите ивент','err');return;}
+  var btn=document.getElementById('gen-btn');
+  btn.textContent='⏳ Генерирую...';btn.disabled=true;
+  var ev=selectedEventForPublish;
+  var evSales=sales.filter(function(s){return s.eventId===ev.fbKey;});
+  var total=evSales.reduce(function(a,s){return a+s.price;},0);
+  var prompt='Напиши пост для Telegram канала магазина Bardak Studio о прошедшем мероприятии. '+
+    'Мероприятие: "'+ev.name+'". '+
+    'Дата: '+ev.startDate+(ev.endDate!==ev.startDate?' — '+ev.endDate:'')+'. '+
+    (ev.location?'Место: '+ev.location+'. ':'')+
+    (ev.description?'Описание: '+ev.description+'. ':'')+
+    (total>0?'Выручка: '+fmt(total)+'. ':'')+
+    (ev.hashtags?'Хэштеги: '+ev.hashtags+'. ':'')+
+    'Напиши три версии поста: на русском, английском и корейском. '+
+    'Пиши живым дружелюбным языком, без шаблонных фраз. Каждую версию оберни в теги <ru>...</ru> <en>...</en> <ko>...</ko>. '+
+    'Добавь эмодзи. Текст не длиннее 300 символов каждый.';
+
+  fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:1000,
+      messages:[{role:'user',content:prompt}]
+    })
+  }).then(function(r){return r.json();})
+  .then(function(data){
+    var text=data.content[0].text;
+    var ru=text.match(/<ru>([\s\S]*?)<\/ru>/);
+    var en=text.match(/<en>([\s\S]*?)<\/en>/);
+    var ko=text.match(/<ko>([\s\S]*?)<\/ko>/);
+    if(ru)document.getElementById('post-text-ru').value=ru[1].trim();
+    if(en)document.getElementById('post-text-en').value=en[1].trim();
+    if(ko)document.getElementById('post-text-ko').value=ko[1].trim();
+    updatePreview();
+    toast('Пост сгенерирован!','ok');
+  }).catch(function(e){
+    toast('Ошибка генерации','err');console.error(e);
+  }).finally(function(){
+    btn.textContent='✨ Сгенерировать через AI';btn.disabled=false;
+  });
+}
+
+// Preview
+function updatePreview(){
+  var lang=currentLang;
+  var text=document.getElementById('post-text-'+lang).value;
+  document.getElementById('preview-text').textContent=text||'Введите текст поста';
+  var photosHtml=selectedPhotos.map(function(p){
+    return '<img class="preview-photo" src="'+p.url+'">';
+  }).join('');
+  document.getElementById('preview-photos').innerHTML=photosHtml;
+}
+
+// Publish to Telegram
+function publishToTelegram(lang){
+  var token=settings.tgToken;
+  var channel=settings.tgChannel;
+  if(!token||!channel){toast('Укажите Bot Token и Channel ID в настройках','err');return;}
+  var text=document.getElementById('post-text-'+lang).value;
+  var ev=selectedEventForPublish;
+  if(!ev){toast('Выберите ивент','err');return;}
+  if(!text){toast('Введите текст поста','err');return;}
+
+  var btn=document.getElementById('pub-btn-ru');
+  if(btn){btn.textContent='⏳ Публикуем...';btn.disabled=true;}
+
+  // Check for duplicates
+  db.ref('posts').orderByChild('eventId').equalTo(ev.fbKey).once('value',function(snap){
+    var existing=[];
+    snap.forEach(function(c){existing.push(c.val());});
+    var alreadyPublished=existing.find(function(p){return p.status==='published'&&p.channel==='telegram'&&p.lang===lang;});
+    if(alreadyPublished){
+      toast('Этот пост уже был опубликован!','warn');
+      if(btn){btn.textContent='📤 Telegram (рус)';btn.disabled=false;}
+      return;
+    }
+    doPublish(token,channel,text,lang,ev,btn);
+  });
+}
+
+function doPublish(token,channel,text,lang,ev,btn){
+  var photos=selectedPhotos;
+  var apiBase='https://api.telegram.org/bot'+token;
+  var promise;
+
+  if(photos.length===0){
+    // Text only
+    promise=fetch(apiBase+'/sendMessage',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:channel,text:text,parse_mode:'HTML'})
+    }).then(function(r){return r.json();});
+  } else if(photos.length===1){
+    // Single photo
+    promise=fetch(apiBase+'/sendPhoto',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:channel,photo:photos[0].url,caption:text,parse_mode:'HTML'})
+    }).then(function(r){return r.json();});
+  } else {
+    // Album (media group) - up to 10 photos
+    var media=photos.slice(0,10).map(function(p,i){
+      return {type:'photo',media:p.url,caption:i===0?text:undefined,parse_mode:i===0?'HTML':undefined};
+    });
+    promise=fetch(apiBase+'/sendMediaGroup',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:channel,media:media})
+    }).then(function(r){return r.json();});
+  }
+
+  promise.then(function(result){
+    if(result.ok){
+      // Save to posts log
+      var postData={
+        eventId:ev.fbKey,eventName:ev.name,
+        text:text,lang:lang,
+        photoCount:photos.length,
+        channel:'telegram',
+        status:'published',
+        publishedAt:Date.now(),
+        postUrl:'https://t.me/'+channel.replace('@','')
+      };
+      db.ref('posts').push(postData);
+      // Mark event as published
+      db.ref('events/'+ev.fbKey).update({publishStatus:'published'});
+      // Mark photos as used
+      photos.forEach(function(p){db.ref('photos/'+p.fbKey).update({used:true});});
+      toast('✅ Опубликовано в Telegram!','ok');
+      renderPubEvents();
+      renderPostLog();
+    } else {
+      var errMsg=result.description||'Неизвестная ошибка';
+      db.ref('posts').push({eventId:ev.fbKey,eventName:ev.name,channel:'telegram',status:'failed',error:errMsg,publishedAt:Date.now()});
+      toast('Ошибка: '+errMsg,'err');
+      renderPostLog();
+    }
+    if(btn){btn.textContent='📤 Telegram (рус)';btn.disabled=false;}
+  }).catch(function(e){
+    toast('Ошибка сети','err');
+    if(btn){btn.textContent='📤 Telegram (рус)';btn.disabled=false;}
+  });
+}
+
+function saveDraft(){
+  if(!selectedEventForPublish){toast('Выберите ивент','err');return;}
+  var ev=selectedEventForPublish;
+  db.ref('posts').push({
+    eventId:ev.fbKey,eventName:ev.name,
+    textRu:document.getElementById('post-text-ru').value,
+    textEn:document.getElementById('post-text-en').value,
+    textKo:document.getElementById('post-text-ko').value,
+    photoCount:selectedPhotos.length,
+    channel:'telegram',
+    status:'draft',
+    createdAt:Date.now()
+  });
+  db.ref('events/'+ev.fbKey).update({publishStatus:'draft'});
+  toast('Черновик сохранён','ok');
+  renderPostLog();
+}
+
+// Post log
+function renderPostLog(){
+  db.ref('posts').orderByChild('publishedAt').limitToLast(30).once('value',function(snap){
+    posts=[];snap.forEach(function(c){posts.push(Object.assign({fbKey:c.key},c.val()));});
+    posts.reverse();
+    var el=document.getElementById('post-log');if(!el)return;
+    if(!posts.length){el.innerHTML='<div class="empty">Нет публикаций</div>';return;}
+    el.innerHTML=posts.map(function(p){
+      var t=p.publishedAt?new Date(p.publishedAt).toLocaleString('ru-RU'):'—';
+      return '<div class="post-log-row">'+
+        '<span class="status-badge '+p.status+'">'+p.status+'</span>'+
+        '<span style="font-weight:700;flex:1">'+p.eventName+'</span>'+
+        '<span class="bdg" style="background:#F1EFE8;color:#5F5E5A">'+p.channel+'</span>'+
+        '<span style="font-size:12px;color:var(--muted)">'+t+'</span>'+
+        (p.postUrl?'<a href="'+p.postUrl+'" target="_blank" class="btn sm" style="text-decoration:none">🔗</a>':'')+
+        (p.error?'<span style="font-size:11px;color:var(--danger)">'+p.error+'</span>':'')+
+      '</div>';
+    }).join('');
+  });
+}
+
+// Test Telegram
+function testTelegram(){
+  var token=document.getElementById('s-tg-token').value.trim();
+  var channel=document.getElementById('s-tg-channel').value.trim();
+  if(!token||!channel){toast('Заполните токен и ID канала','err');return;}
+  fetch('https://api.telegram.org/bot'+token+'/sendMessage',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({chat_id:channel,text:'✅ Bardak Studio Bot подключён! Всё работает 🐱'})
+  }).then(function(r){return r.json();}).then(function(r){
+    if(r.ok)toast('✅ Тест прошёл!','ok');
+    else toast('Ошибка: '+r.description,'err');
+  }).catch(function(){toast('Ошибка сети','err');});
+}
+
+// Override startListeners to also load posts/settings
+var _origStartListeners=startListeners;
+startListeners=function(){
+  _origStartListeners();
+  loadSettings();
+  renderPostLog();
+  // Watch events changes to update publish tab
+  db.ref('events').on('value',function(){
+    renderPubEvents();
+  });
+};
+
+// Override goTab to load photos when switching to publish
+var _origGoTab=goTab;
+goTab=function(name,btn){
+  _origGoTab(name,btn);
+  if(name==='publish'){
+    renderPubEvents();
+    renderPostLog();
+    if(selectedEventForPublish)loadPhotosForEvent(selectedEventForPublish.fbKey);
+  }
+};
+
+</script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js">
+// ===== PUBLISH MODULE =====
+var selectedEventForPublish = null;
+var selectedPhotos = []; // [{url, name, id}]
+var uploadedPhotos = {}; // eventId -> [{url, name, id, used}]
+var posts = [];
+var settings = {tgToken:'8822476479:AAHb4B2Mu65cvWbaX_uDHuV4SsJMYNqhXrE', tgChannel:'-1003347726742', autoPublish:false, defaultLang:'ru'};
+var currentLang = 'ru';
+
+// Load settings from Firebase
+function loadSettings(){
+  db.ref('settings').once('value',function(snap){
+    if(snap.val()) Object.assign(settings, snap.val());
+    applySettings();
+  });
+}
+function applySettings(){
+  var tf=document.getElementById('s-tg-token');
+  var cf=document.getElementById('s-tg-channel');
+  var lf=document.getElementById('s-default-lang');
+  if(tf)tf.value=settings.tgToken||'';
+  if(cf)cf.value=settings.tgChannel||'';
+  if(lf)lf.value=settings.defaultLang||'ru';
+  updateToggleUI();
+}
+function saveSetting(key,inputId){
+  var val=document.getElementById(inputId).value.trim();
+  settings[key]=val;
+  db.ref('settings/'+key).set(val);
+  toast('Сохранено','ok');
+}
+function toggleAutoPublish(){
+  settings.autoPublish=!settings.autoPublish;
+  db.ref('settings/autoPublish').set(settings.autoPublish);
+  updateToggleUI();
+  toast(settings.autoPublish?'Автопубликация включена':'Черновики включены', settings.autoPublish?'ok':'warn');
+}
+function updateToggleUI(){
+  var btn=document.getElementById('toggle-auto');
+  var lbl=document.getElementById('toggle-auto-lbl');
+  if(!btn)return;
+  btn.className='toggle'+(settings.autoPublish?' on':'');
+  if(lbl)lbl.textContent=settings.autoPublish?'Вкл — автопубликация':'Выкл — черновики';
+}
+
+// Render events list in publish tab
+function renderPubEvents(){
+  var el=document.getElementById('pub-events-list');if(!el)return;
+  if(!events.length){el.innerHTML='<div class="empty">Нет ивентов — создайте их на вкладке «Ивенты»</div>';return;}
+  el.innerHTML=events.map(function(ev){
+    var evSales=sales.filter(function(s){return s.eventId===ev.fbKey;});
+    var evTotal=evSales.reduce(function(a,s){return a+s.price;},0);
+    var photos=uploadedPhotos[ev.fbKey]||[];
+    var today=new Date().toISOString().slice(0,10);
+    var isActive=ev.startDate<=today&&ev.endDate>=today;
+    var isPast=ev.endDate<today;
+    return '<div class="pub-event-card'+(selectedEventForPublish&&selectedEventForPublish.fbKey===ev.fbKey?' selected':'')+'" onclick="selectEventForPublish(''+ev.fbKey+'')">'+
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+        '<div class="event-dot" style="background:'+(isActive?'var(--k)':isPast?'var(--muted)':'var(--gold)')+'"></div>'+
+        '<div style="flex:1">'+
+          '<div style="font-weight:700;font-size:15px">'+ev.name+'</div>'+
+          '<div style="font-size:12px;color:var(--muted)">'+ev.startDate+(ev.endDate!==ev.startDate?' → '+ev.endDate:'')+(ev.location?' • '+ev.location:'')+'</div>'+
+        '</div>'+
+        '<div style="display:flex;gap:8px;align-items:center">'+
+          '<span style="font-size:12px;color:var(--muted)">📸 '+photos.length+' фото</span>'+
+          '<span style="font-size:12px;color:var(--muted)">💰 '+fmt(evTotal)+'</span>'+
+          (ev.publishStatus?'<span class="status-badge '+ev.publishStatus+'">'+ev.publishStatus+'</span>':'<span class="status-badge draft">черновик</span>')+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+function selectEventForPublish(fbKey){
+  selectedEventForPublish=events.find(function(e){return e.fbKey===fbKey;});
+  selectedPhotos=[];
+  renderPubEvents();
+  document.getElementById('pub-workspace').style.display='block';
+  renderPhotoGrid();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// Photo upload (using base64 stored in Firebase - no Storage needed!)
+function uploadPhotos(input){
+  if(!selectedEventForPublish){toast('Сначала выберите ивент','err');return;}
+  var files=Array.from(input.files);
+  if(!files.length)return;
+  var count=0;
+  files.forEach(function(file){
+    var reader=new FileReader();
+    reader.onload=function(e){
+      var photoData={
+        url:e.target.result,
+        name:file.name,
+        eventId:selectedEventForPublish.fbKey,
+        uploadedAt:Date.now(),
+        used:false
+      };
+      db.ref('photos').push(photoData,function(){
+        count++;
+        if(count===files.length){
+          toast(files.length+' фото загружено','ok');
+          loadPhotosForEvent(selectedEventForPublish.fbKey);
+        }
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadPhotosForEvent(eventId){
+  db.ref('photos').orderByChild('eventId').equalTo(eventId).once('value',function(snap){
+    var photos=[];
+    snap.forEach(function(c){photos.push(Object.assign({fbKey:c.key},c.val()));});
+    uploadedPhotos[eventId]=photos;
+    renderPhotoGrid();
+  });
+}
+
+function renderPhotoGrid(){
+  var grid=document.getElementById('photo-grid');if(!grid)return;
+  var eventId=selectedEventForPublish?selectedEventForPublish.fbKey:null;
+  var photos=eventId?(uploadedPhotos[eventId]||[]):[];
+  if(!photos.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1">Загрузите фотографии для этого ивента</div>';return;}
+  grid.innerHTML=photos.map(function(p){
+    var isSel=selectedPhotos.findIndex(function(x){return x.fbKey===p.fbKey;})>=0;
+    return '<div class="photo-item'+(isSel?' selected':'')+'" onclick="togglePhoto(''+p.fbKey+'')">'+
+      '<img src="'+p.url+'" alt="'+p.name+'">'+
+      '<div class="check">✓</div>'+
+      '<button class="photo-del" onclick="deletePhoto(event,''+p.fbKey+'')">✕</button>'+
+    '</div>';
+  }).join('');
+}
+
+function togglePhoto(fbKey){
+  var eventId=selectedEventForPublish.fbKey;
+  var photos=uploadedPhotos[eventId]||[];
+  var photo=photos.find(function(p){return p.fbKey===fbKey;});if(!photo)return;
+  var idx=selectedPhotos.findIndex(function(p){return p.fbKey===fbKey;});
+  if(idx>=0)selectedPhotos.splice(idx,1);
+  else selectedPhotos.push(photo);
+  renderPhotoGrid();
+  updatePreview();
+}
+
+function deletePhoto(e,fbKey){
+  e.stopPropagation();
+  if(!confirm('Удалить фото?'))return;
+  db.ref('photos/'+fbKey).remove();
+  var eventId=selectedEventForPublish.fbKey;
+  uploadedPhotos[eventId]=(uploadedPhotos[eventId]||[]).filter(function(p){return p.fbKey!==fbKey;});
+  selectedPhotos=selectedPhotos.filter(function(p){return p.fbKey!==fbKey;});
+  renderPhotoGrid();
+}
+
+// Language switcher
+function switchLang(lang,btn){
+  currentLang=lang;
+  document.querySelectorAll('.lang-btn').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  ['ru','en','ko'].forEach(function(l){
+    var ta=document.getElementById('post-text-'+l);
+    if(ta)ta.style.display=l===lang?'block':'none';
+  });
+}
+
+// AI post generation
+function generatePost(){
+  if(!selectedEventForPublish){toast('Сначала выберите ивент','err');return;}
+  var btn=document.getElementById('gen-btn');
+  btn.textContent='⏳ Генерирую...';btn.disabled=true;
+  var ev=selectedEventForPublish;
+  var evSales=sales.filter(function(s){return s.eventId===ev.fbKey;});
+  var total=evSales.reduce(function(a,s){return a+s.price;},0);
+  var prompt='Напиши пост для Telegram канала магазина Bardak Studio о прошедшем мероприятии. '+
+    'Мероприятие: "'+ev.name+'". '+
+    'Дата: '+ev.startDate+(ev.endDate!==ev.startDate?' — '+ev.endDate:'')+'. '+
+    (ev.location?'Место: '+ev.location+'. ':'')+
+    (ev.description?'Описание: '+ev.description+'. ':'')+
+    (total>0?'Выручка: '+fmt(total)+'. ':'')+
+    (ev.hashtags?'Хэштеги: '+ev.hashtags+'. ':'')+
+    'Напиши три версии поста: на русском, английском и корейском. '+
+    'Пиши живым дружелюбным языком, без шаблонных фраз. Каждую версию оберни в теги <ru>...</ru> <en>...</en> <ko>...</ko>. '+
+    'Добавь эмодзи. Текст не длиннее 300 символов каждый.';
+
+  fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:1000,
+      messages:[{role:'user',content:prompt}]
+    })
+  }).then(function(r){return r.json();})
+  .then(function(data){
+    var text=data.content[0].text;
+    var ru=text.match(/<ru>([\s\S]*?)<\/ru>/);
+    var en=text.match(/<en>([\s\S]*?)<\/en>/);
+    var ko=text.match(/<ko>([\s\S]*?)<\/ko>/);
+    if(ru)document.getElementById('post-text-ru').value=ru[1].trim();
+    if(en)document.getElementById('post-text-en').value=en[1].trim();
+    if(ko)document.getElementById('post-text-ko').value=ko[1].trim();
+    updatePreview();
+    toast('Пост сгенерирован!','ok');
+  }).catch(function(e){
+    toast('Ошибка генерации','err');console.error(e);
+  }).finally(function(){
+    btn.textContent='✨ Сгенерировать через AI';btn.disabled=false;
+  });
+}
+
+// Preview
+function updatePreview(){
+  var lang=currentLang;
+  var text=document.getElementById('post-text-'+lang).value;
+  document.getElementById('preview-text').textContent=text||'Введите текст поста';
+  var photosHtml=selectedPhotos.map(function(p){
+    return '<img class="preview-photo" src="'+p.url+'">';
+  }).join('');
+  document.getElementById('preview-photos').innerHTML=photosHtml;
+}
+
+// Publish to Telegram
+function publishToTelegram(lang){
+  var token=settings.tgToken;
+  var channel=settings.tgChannel;
+  if(!token||!channel){toast('Укажите Bot Token и Channel ID в настройках','err');return;}
+  var text=document.getElementById('post-text-'+lang).value;
+  var ev=selectedEventForPublish;
+  if(!ev){toast('Выберите ивент','err');return;}
+  if(!text){toast('Введите текст поста','err');return;}
+
+  var btn=document.getElementById('pub-btn-ru');
+  if(btn){btn.textContent='⏳ Публикуем...';btn.disabled=true;}
+
+  // Check for duplicates
+  db.ref('posts').orderByChild('eventId').equalTo(ev.fbKey).once('value',function(snap){
+    var existing=[];
+    snap.forEach(function(c){existing.push(c.val());});
+    var alreadyPublished=existing.find(function(p){return p.status==='published'&&p.channel==='telegram'&&p.lang===lang;});
+    if(alreadyPublished){
+      toast('Этот пост уже был опубликован!','warn');
+      if(btn){btn.textContent='📤 Telegram (рус)';btn.disabled=false;}
+      return;
+    }
+    doPublish(token,channel,text,lang,ev,btn);
+  });
+}
+
+function doPublish(token,channel,text,lang,ev,btn){
+  var photos=selectedPhotos;
+  var apiBase='https://api.telegram.org/bot'+token;
+  var promise;
+
+  if(photos.length===0){
+    // Text only
+    promise=fetch(apiBase+'/sendMessage',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:channel,text:text,parse_mode:'HTML'})
+    }).then(function(r){return r.json();});
+  } else if(photos.length===1){
+    // Single photo
+    promise=fetch(apiBase+'/sendPhoto',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:channel,photo:photos[0].url,caption:text,parse_mode:'HTML'})
+    }).then(function(r){return r.json();});
+  } else {
+    // Album (media group) - up to 10 photos
+    var media=photos.slice(0,10).map(function(p,i){
+      return {type:'photo',media:p.url,caption:i===0?text:undefined,parse_mode:i===0?'HTML':undefined};
+    });
+    promise=fetch(apiBase+'/sendMediaGroup',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:channel,media:media})
+    }).then(function(r){return r.json();});
+  }
+
+  promise.then(function(result){
+    if(result.ok){
+      // Save to posts log
+      var postData={
+        eventId:ev.fbKey,eventName:ev.name,
+        text:text,lang:lang,
+        photoCount:photos.length,
+        channel:'telegram',
+        status:'published',
+        publishedAt:Date.now(),
+        postUrl:'https://t.me/'+channel.replace('@','')
+      };
+      db.ref('posts').push(postData);
+      // Mark event as published
+      db.ref('events/'+ev.fbKey).update({publishStatus:'published'});
+      // Mark photos as used
+      photos.forEach(function(p){db.ref('photos/'+p.fbKey).update({used:true});});
+      toast('✅ Опубликовано в Telegram!','ok');
+      renderPubEvents();
+      renderPostLog();
+    } else {
+      var errMsg=result.description||'Неизвестная ошибка';
+      db.ref('posts').push({eventId:ev.fbKey,eventName:ev.name,channel:'telegram',status:'failed',error:errMsg,publishedAt:Date.now()});
+      toast('Ошибка: '+errMsg,'err');
+      renderPostLog();
+    }
+    if(btn){btn.textContent='📤 Telegram (рус)';btn.disabled=false;}
+  }).catch(function(e){
+    toast('Ошибка сети','err');
+    if(btn){btn.textContent='📤 Telegram (рус)';btn.disabled=false;}
+  });
+}
+
+function saveDraft(){
+  if(!selectedEventForPublish){toast('Выберите ивент','err');return;}
+  var ev=selectedEventForPublish;
+  db.ref('posts').push({
+    eventId:ev.fbKey,eventName:ev.name,
+    textRu:document.getElementById('post-text-ru').value,
+    textEn:document.getElementById('post-text-en').value,
+    textKo:document.getElementById('post-text-ko').value,
+    photoCount:selectedPhotos.length,
+    channel:'telegram',
+    status:'draft',
+    createdAt:Date.now()
+  });
+  db.ref('events/'+ev.fbKey).update({publishStatus:'draft'});
+  toast('Черновик сохранён','ok');
+  renderPostLog();
+}
+
+// Post log
+function renderPostLog(){
+  db.ref('posts').orderByChild('publishedAt').limitToLast(30).once('value',function(snap){
+    posts=[];snap.forEach(function(c){posts.push(Object.assign({fbKey:c.key},c.val()));});
+    posts.reverse();
+    var el=document.getElementById('post-log');if(!el)return;
+    if(!posts.length){el.innerHTML='<div class="empty">Нет публикаций</div>';return;}
+    el.innerHTML=posts.map(function(p){
+      var t=p.publishedAt?new Date(p.publishedAt).toLocaleString('ru-RU'):'—';
+      return '<div class="post-log-row">'+
+        '<span class="status-badge '+p.status+'">'+p.status+'</span>'+
+        '<span style="font-weight:700;flex:1">'+p.eventName+'</span>'+
+        '<span class="bdg" style="background:#F1EFE8;color:#5F5E5A">'+p.channel+'</span>'+
+        '<span style="font-size:12px;color:var(--muted)">'+t+'</span>'+
+        (p.postUrl?'<a href="'+p.postUrl+'" target="_blank" class="btn sm" style="text-decoration:none">🔗</a>':'')+
+        (p.error?'<span style="font-size:11px;color:var(--danger)">'+p.error+'</span>':'')+
+      '</div>';
+    }).join('');
+  });
+}
+
+// Test Telegram
+function testTelegram(){
+  var token=document.getElementById('s-tg-token').value.trim();
+  var channel=document.getElementById('s-tg-channel').value.trim();
+  if(!token||!channel){toast('Заполните токен и ID канала','err');return;}
+  fetch('https://api.telegram.org/bot'+token+'/sendMessage',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({chat_id:channel,text:'✅ Bardak Studio Bot подключён! Всё работает 🐱'})
+  }).then(function(r){return r.json();}).then(function(r){
+    if(r.ok)toast('✅ Тест прошёл!','ok');
+    else toast('Ошибка: '+r.description,'err');
+  }).catch(function(){toast('Ошибка сети','err');});
+}
+
+// Override startListeners to also load posts/settings
+var _origStartListeners=startListeners;
+startListeners=function(){
+  _origStartListeners();
+  loadSettings();
+  renderPostLog();
+  // Watch events changes to update publish tab
+  db.ref('events').on('value',function(){
+    renderPubEvents();
+  });
+};
+
+// Override goTab to load photos when switching to publish
+var _origGoTab=goTab;
+goTab=function(name,btn){
+  _origGoTab(name,btn);
+  if(name==='publish'){
+    renderPubEvents();
+    renderPostLog();
+    if(selectedEventForPublish)loadPhotosForEvent(selectedEventForPublish.fbKey);
+  }
+};
+
+</script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js">
+// ===== PUBLISH MODULE =====
+var selectedEventForPublish = null;
+var selectedPhotos = []; // [{url, name, id}]
+var uploadedPhotos = {}; // eventId -> [{url, name, id, used}]
+var posts = [];
+var settings = {tgToken:'8822476479:AAHb4B2Mu65cvWbaX_uDHuV4SsJMYNqhXrE', tgChannel:'-1003347726742', autoPublish:false, defaultLang:'ru'};
+var currentLang = 'ru';
+
+// Load settings from Firebase
+function loadSettings(){
+  db.ref('settings').once('value',function(snap){
+    if(snap.val()) Object.assign(settings, snap.val());
+    applySettings();
+  });
+}
+function applySettings(){
+  var tf=document.getElementById('s-tg-token');
+  var cf=document.getElementById('s-tg-channel');
+  var lf=document.getElementById('s-default-lang');
+  if(tf)tf.value=settings.tgToken||'';
+  if(cf)cf.value=settings.tgChannel||'';
+  if(lf)lf.value=settings.defaultLang||'ru';
+  updateToggleUI();
+}
+function saveSetting(key,inputId){
+  var val=document.getElementById(inputId).value.trim();
+  settings[key]=val;
+  db.ref('settings/'+key).set(val);
+  toast('Сохранено','ok');
+}
+function toggleAutoPublish(){
+  settings.autoPublish=!settings.autoPublish;
+  db.ref('settings/autoPublish').set(settings.autoPublish);
+  updateToggleUI();
+  toast(settings.autoPublish?'Автопубликация включена':'Черновики включены', settings.autoPublish?'ok':'warn');
+}
+function updateToggleUI(){
+  var btn=document.getElementById('toggle-auto');
+  var lbl=document.getElementById('toggle-auto-lbl');
+  if(!btn)return;
+  btn.className='toggle'+(settings.autoPublish?' on':'');
+  if(lbl)lbl.textContent=settings.autoPublish?'Вкл — автопубликация':'Выкл — черновики';
+}
+
+// Render events list in publish tab
+function renderPubEvents(){
+  var el=document.getElementById('pub-events-list');if(!el)return;
+  if(!events.length){el.innerHTML='<div class="empty">Нет ивентов — создайте их на вкладке «Ивенты»</div>';return;}
+  el.innerHTML=events.map(function(ev){
+    var evSales=sales.filter(function(s){return s.eventId===ev.fbKey;});
+    var evTotal=evSales.reduce(function(a,s){return a+s.price;},0);
+    var photos=uploadedPhotos[ev.fbKey]||[];
+    var today=new Date().toISOString().slice(0,10);
+    var isActive=ev.startDate<=today&&ev.endDate>=today;
+    var isPast=ev.endDate<today;
+    return '<div class="pub-event-card'+(selectedEventForPublish&&selectedEventForPublish.fbKey===ev.fbKey?' selected':'')+'" onclick="selectEventForPublish(''+ev.fbKey+'')">'+
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+        '<div class="event-dot" style="background:'+(isActive?'var(--k)':isPast?'var(--muted)':'var(--gold)')+'"></div>'+
+        '<div style="flex:1">'+
+          '<div style="font-weight:700;font-size:15px">'+ev.name+'</div>'+
+          '<div style="font-size:12px;color:var(--muted)">'+ev.startDate+(ev.endDate!==ev.startDate?' → '+ev.endDate:'')+(ev.location?' • '+ev.location:'')+'</div>'+
+        '</div>'+
+        '<div style="display:flex;gap:8px;align-items:center">'+
+          '<span style="font-size:12px;color:var(--muted)">📸 '+photos.length+' фото</span>'+
+          '<span style="font-size:12px;color:var(--muted)">💰 '+fmt(evTotal)+'</span>'+
+          (ev.publishStatus?'<span class="status-badge '+ev.publishStatus+'">'+ev.publishStatus+'</span>':'<span class="status-badge draft">черновик</span>')+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+function selectEventForPublish(fbKey){
+  selectedEventForPublish=events.find(function(e){return e.fbKey===fbKey;});
+  selectedPhotos=[];
+  renderPubEvents();
+  document.getElementById('pub-workspace').style.display='block';
+  renderPhotoGrid();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// Photo upload (using base64 stored in Firebase - no Storage needed!)
+function uploadPhotos(input){
+  if(!selectedEventForPublish){toast('Сначала выберите ивент','err');return;}
+  var files=Array.from(input.files);
+  if(!files.length)return;
+  var count=0;
+  files.forEach(function(file){
+    var reader=new FileReader();
+    reader.onload=function(e){
+      var photoData={
+        url:e.target.result,
+        name:file.name,
+        eventId:selectedEventForPublish.fbKey,
+        uploadedAt:Date.now(),
+        used:false
+      };
+      db.ref('photos').push(photoData,function(){
+        count++;
+        if(count===files.length){
+          toast(files.length+' фото загружено','ok');
+          loadPhotosForEvent(selectedEventForPublish.fbKey);
+        }
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadPhotosForEvent(eventId){
+  db.ref('photos').orderByChild('eventId').equalTo(eventId).once('value',function(snap){
+    var photos=[];
+    snap.forEach(function(c){photos.push(Object.assign({fbKey:c.key},c.val()));});
+    uploadedPhotos[eventId]=photos;
+    renderPhotoGrid();
+  });
+}
+
+function renderPhotoGrid(){
+  var grid=document.getElementById('photo-grid');if(!grid)return;
+  var eventId=selectedEventForPublish?selectedEventForPublish.fbKey:null;
+  var photos=eventId?(uploadedPhotos[eventId]||[]):[];
+  if(!photos.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1">Загрузите фотографии для этого ивента</div>';return;}
+  grid.innerHTML=photos.map(function(p){
+    var isSel=selectedPhotos.findIndex(function(x){return x.fbKey===p.fbKey;})>=0;
+    return '<div class="photo-item'+(isSel?' selected':'')+'" onclick="togglePhoto(''+p.fbKey+'')">'+
+      '<img src="'+p.url+'" alt="'+p.name+'">'+
+      '<div class="check">✓</div>'+
+      '<button class="photo-del" onclick="deletePhoto(event,''+p.fbKey+'')">✕</button>'+
+    '</div>';
+  }).join('');
+}
+
+function togglePhoto(fbKey){
+  var eventId=selectedEventForPublish.fbKey;
+  var photos=uploadedPhotos[eventId]||[];
+  var photo=photos.find(function(p){return p.fbKey===fbKey;});if(!photo)return;
+  var idx=selectedPhotos.findIndex(function(p){return p.fbKey===fbKey;});
+  if(idx>=0)selectedPhotos.splice(idx,1);
+  else selectedPhotos.push(photo);
+  renderPhotoGrid();
+  updatePreview();
+}
+
+function deletePhoto(e,fbKey){
+  e.stopPropagation();
+  if(!confirm('Удалить фото?'))return;
+  db.ref('photos/'+fbKey).remove();
+  var eventId=selectedEventForPublish.fbKey;
+  uploadedPhotos[eventId]=(uploadedPhotos[eventId]||[]).filter(function(p){return p.fbKey!==fbKey;});
+  selectedPhotos=selectedPhotos.filter(function(p){return p.fbKey!==fbKey;});
+  renderPhotoGrid();
+}
+
+// Language switcher
+function switchLang(lang,btn){
+  currentLang=lang;
+  document.querySelectorAll('.lang-btn').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  ['ru','en','ko'].forEach(function(l){
+    var ta=document.getElementById('post-text-'+l);
+    if(ta)ta.style.display=l===lang?'block':'none';
+  });
+}
+
+// AI post generation
+function generatePost(){
+  if(!selectedEventForPublish){toast('Сначала выберите ивент','err');return;}
+  var btn=document.getElementById('gen-btn');
+  btn.textContent='⏳ Генерирую...';btn.disabled=true;
+  var ev=selectedEventForPublish;
+  var evSales=sales.filter(function(s){return s.eventId===ev.fbKey;});
+  var total=evSales.reduce(function(a,s){return a+s.price;},0);
+  var prompt='Напиши пост для Telegram канала магазина Bardak Studio о прошедшем мероприятии. '+
+    'Мероприятие: "'+ev.name+'". '+
+    'Дата: '+ev.startDate+(ev.endDate!==ev.startDate?' — '+ev.endDate:'')+'. '+
+    (ev.location?'Место: '+ev.location+'. ':'')+
+    (ev.description?'Описание: '+ev.description+'. ':'')+
+    (total>0?'Выручка: '+fmt(total)+'. ':'')+
+    (ev.hashtags?'Хэштеги: '+ev.hashtags+'. ':'')+
+    'Напиши три версии поста: на русском, английском и корейском. '+
+    'Пиши живым дружелюбным языком, без шаблонных фраз. Каждую версию оберни в теги <ru>...</ru> <en>...</en> <ko>...</ko>. '+
+    'Добавь эмодзи. Текст не длиннее 300 символов каждый.';
+
+  fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:1000,
+      messages:[{role:'user',content:prompt}]
+    })
+  }).then(function(r){return r.json();})
+  .then(function(data){
+    var text=data.content[0].text;
+    var ru=text.match(/<ru>([\s\S]*?)<\/ru>/);
+    var en=text.match(/<en>([\s\S]*?)<\/en>/);
+    var ko=text.match(/<ko>([\s\S]*?)<\/ko>/);
+    if(ru)document.getElementById('post-text-ru').value=ru[1].trim();
+    if(en)document.getElementById('post-text-en').value=en[1].trim();
+    if(ko)document.getElementById('post-text-ko').value=ko[1].trim();
+    updatePreview();
+    toast('Пост сгенерирован!','ok');
+  }).catch(function(e){
+    toast('Ошибка генерации','err');console.error(e);
+  }).finally(function(){
+    btn.textContent='✨ Сгенерировать через AI';btn.disabled=false;
+  });
+}
+
+// Preview
+function updatePreview(){
+  var lang=currentLang;
+  var text=document.getElementById('post-text-'+lang).value;
+  document.getElementById('preview-text').textContent=text||'Введите текст поста';
+  var photosHtml=selectedPhotos.map(function(p){
+    return '<img class="preview-photo" src="'+p.url+'">';
+  }).join('');
+  document.getElementById('preview-photos').innerHTML=photosHtml;
+}
+
+// Publish to Telegram
+function publishToTelegram(lang){
+  var token=settings.tgToken;
+  var channel=settings.tgChannel;
+  if(!token||!channel){toast('Укажите Bot Token и Channel ID в настройках','err');return;}
+  var text=document.getElementById('post-text-'+lang).value;
+  var ev=selectedEventForPublish;
+  if(!ev){toast('Выберите ивент','err');return;}
+  if(!text){toast('Введите текст поста','err');return;}
+
+  var btn=document.getElementById('pub-btn-ru');
+  if(btn){btn.textContent='⏳ Публикуем...';btn.disabled=true;}
+
+  // Check for duplicates
+  db.ref('posts').orderByChild('eventId').equalTo(ev.fbKey).once('value',function(snap){
+    var existing=[];
+    snap.forEach(function(c){existing.push(c.val());});
+    var alreadyPublished=existing.find(function(p){return p.status==='published'&&p.channel==='telegram'&&p.lang===lang;});
+    if(alreadyPublished){
+      toast('Этот пост уже был опубликован!','warn');
+      if(btn){btn.textContent='📤 Telegram (рус)';btn.disabled=false;}
+      return;
+    }
+    doPublish(token,channel,text,lang,ev,btn);
+  });
+}
+
+function doPublish(token,channel,text,lang,ev,btn){
+  var photos=selectedPhotos;
+  var apiBase='https://api.telegram.org/bot'+token;
+  var promise;
+
+  if(photos.length===0){
+    // Text only
+    promise=fetch(apiBase+'/sendMessage',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:channel,text:text,parse_mode:'HTML'})
+    }).then(function(r){return r.json();});
+  } else if(photos.length===1){
+    // Single photo
+    promise=fetch(apiBase+'/sendPhoto',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:channel,photo:photos[0].url,caption:text,parse_mode:'HTML'})
+    }).then(function(r){return r.json();});
+  } else {
+    // Album (media group) - up to 10 photos
+    var media=photos.slice(0,10).map(function(p,i){
+      return {type:'photo',media:p.url,caption:i===0?text:undefined,parse_mode:i===0?'HTML':undefined};
+    });
+    promise=fetch(apiBase+'/sendMediaGroup',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:channel,media:media})
+    }).then(function(r){return r.json();});
+  }
+
+  promise.then(function(result){
+    if(result.ok){
+      // Save to posts log
+      var postData={
+        eventId:ev.fbKey,eventName:ev.name,
+        text:text,lang:lang,
+        photoCount:photos.length,
+        channel:'telegram',
+        status:'published',
+        publishedAt:Date.now(),
+        postUrl:'https://t.me/'+channel.replace('@','')
+      };
+      db.ref('posts').push(postData);
+      // Mark event as published
+      db.ref('events/'+ev.fbKey).update({publishStatus:'published'});
+      // Mark photos as used
+      photos.forEach(function(p){db.ref('photos/'+p.fbKey).update({used:true});});
+      toast('✅ Опубликовано в Telegram!','ok');
+      renderPubEvents();
+      renderPostLog();
+    } else {
+      var errMsg=result.description||'Неизвестная ошибка';
+      db.ref('posts').push({eventId:ev.fbKey,eventName:ev.name,channel:'telegram',status:'failed',error:errMsg,publishedAt:Date.now()});
+      toast('Ошибка: '+errMsg,'err');
+      renderPostLog();
+    }
+    if(btn){btn.textContent='📤 Telegram (рус)';btn.disabled=false;}
+  }).catch(function(e){
+    toast('Ошибка сети','err');
+    if(btn){btn.textContent='📤 Telegram (рус)';btn.disabled=false;}
+  });
+}
+
+function saveDraft(){
+  if(!selectedEventForPublish){toast('Выберите ивент','err');return;}
+  var ev=selectedEventForPublish;
+  db.ref('posts').push({
+    eventId:ev.fbKey,eventName:ev.name,
+    textRu:document.getElementById('post-text-ru').value,
+    textEn:document.getElementById('post-text-en').value,
+    textKo:document.getElementById('post-text-ko').value,
+    photoCount:selectedPhotos.length,
+    channel:'telegram',
+    status:'draft',
+    createdAt:Date.now()
+  });
+  db.ref('events/'+ev.fbKey).update({publishStatus:'draft'});
+  toast('Черновик сохранён','ok');
+  renderPostLog();
+}
+
+// Post log
+function renderPostLog(){
+  db.ref('posts').orderByChild('publishedAt').limitToLast(30).once('value',function(snap){
+    posts=[];snap.forEach(function(c){posts.push(Object.assign({fbKey:c.key},c.val()));});
+    posts.reverse();
+    var el=document.getElementById('post-log');if(!el)return;
+    if(!posts.length){el.innerHTML='<div class="empty">Нет публикаций</div>';return;}
+    el.innerHTML=posts.map(function(p){
+      var t=p.publishedAt?new Date(p.publishedAt).toLocaleString('ru-RU'):'—';
+      return '<div class="post-log-row">'+
+        '<span class="status-badge '+p.status+'">'+p.status+'</span>'+
+        '<span style="font-weight:700;flex:1">'+p.eventName+'</span>'+
+        '<span class="bdg" style="background:#F1EFE8;color:#5F5E5A">'+p.channel+'</span>'+
+        '<span style="font-size:12px;color:var(--muted)">'+t+'</span>'+
+        (p.postUrl?'<a href="'+p.postUrl+'" target="_blank" class="btn sm" style="text-decoration:none">🔗</a>':'')+
+        (p.error?'<span style="font-size:11px;color:var(--danger)">'+p.error+'</span>':'')+
+      '</div>';
+    }).join('');
+  });
+}
+
+// Test Telegram
+function testTelegram(){
+  var token=document.getElementById('s-tg-token').value.trim();
+  var channel=document.getElementById('s-tg-channel').value.trim();
+  if(!token||!channel){toast('Заполните токен и ID канала','err');return;}
+  fetch('https://api.telegram.org/bot'+token+'/sendMessage',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({chat_id:channel,text:'✅ Bardak Studio Bot подключён! Всё работает 🐱'})
+  }).then(function(r){return r.json();}).then(function(r){
+    if(r.ok)toast('✅ Тест прошёл!','ok');
+    else toast('Ошибка: '+r.description,'err');
+  }).catch(function(){toast('Ошибка сети','err');});
+}
+
+// Override startListeners to also load posts/settings
+var _origStartListeners=startListeners;
+startListeners=function(){
+  _origStartListeners();
+  loadSettings();
+  renderPostLog();
+  // Watch events changes to update publish tab
+  db.ref('events').on('value',function(){
+    renderPubEvents();
+  });
+};
+
+// Override goTab to load photos when switching to publish
+var _origGoTab=goTab;
+goTab=function(name,btn){
+  _origGoTab(name,btn);
+  if(name==='publish'){
+    renderPubEvents();
+    renderPostLog();
+    if(selectedEventForPublish)loadPhotosForEvent(selectedEventForPublish.fbKey);
+  }
+};
+
+</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -186,6 +2116,43 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
   .analytics-grid{grid-template-columns:1fr}
   .tab{font-size:10px;padding:4px 8px}
 }
+
+/* PUBLISH */
+.pub-event-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:1.1rem 1.25rem;margin-bottom:.75rem;cursor:pointer;transition:all .2s}
+.pub-event-card:hover{border-color:var(--k);background:var(--kl)}
+.pub-event-card.selected{border-color:var(--k);background:var(--kl)}
+.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-top:10px}
+.photo-item{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;border:2px solid transparent;cursor:pointer}
+.photo-item img{width:100%;height:100%;object-fit:cover}
+.photo-item.selected{border-color:var(--k)}
+.photo-item .check{position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;background:var(--k);color:white;font-size:12px;display:none;align-items:center;justify-content:center;font-weight:700}
+.photo-item.selected .check{display:flex}
+.photo-del{position:absolute;top:4px;left:4px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,0.5);color:white;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none}
+.preview-box{background:#f9f9f9;border-radius:var(--r);border:1px solid var(--border);padding:1rem;margin-top:1rem}
+.preview-photos{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.preview-photo{width:80px;height:80px;border-radius:8px;object-fit:cover}
+.lang-tabs{display:flex;gap:4px;margin-bottom:8px}
+.lang-btn{font-size:12px;font-weight:700;padding:4px 12px;border-radius:7px;border:1px solid var(--border);background:white;cursor:pointer}
+.lang-btn.on{background:var(--text);color:#fff;border-color:var(--text)}
+.post-log-row{display:flex;align-items:center;gap:10px;padding:.75rem 1.25rem;border-bottom:1px solid var(--border);font-size:13px;flex-wrap:wrap}
+.post-log-row:last-child{border-bottom:none}
+.status-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px}
+.status-badge.published{background:#EAF3DE;color:#3B6D11}
+.status-badge.draft{background:#F1EFE8;color:#5F5E5A}
+.status-badge.failed{background:var(--dangerl);color:var(--danger)}
+.status-badge.pending{background:var(--goldl);color:var(--gold)}
+/* SETTINGS */
+.settings-section{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:1.25rem;margin-bottom:1rem}
+.settings-section h3{font-family:Unbounded,sans-serif;font-size:.8rem;font-weight:600;margin-bottom:1rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.setting-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+.setting-lbl{font-size:13px;font-weight:700;width:160px;flex-shrink:0}
+.setting-input{font-family:Nunito,sans-serif;font-size:13px;border:1px solid var(--border);border-radius:8px;padding:6px 10px;flex:1;outline:none;min-width:200px}
+.setting-input:focus{border-color:var(--k)}
+.toggle-wrap{display:flex;align-items:center;gap:10px}
+.toggle{width:44px;height:24px;border-radius:12px;background:#ddd;position:relative;cursor:pointer;transition:background .2s;border:none;flex-shrink:0}
+.toggle.on{background:var(--k)}
+.toggle::after{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:white;top:3px;left:3px;transition:left .2s}
+.toggle.on::after{left:23px}
 </style>
 </head>
 <body>
@@ -233,6 +2200,8 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
       <button class="tab" onclick="goTab('events',this)">📅 Ивенты</button>
       <button class="tab" onclick="goTab('catalog',this)">🏷 Каталог</button>
       <button class="tab" onclick="goTab('inventory',this)">📦 Склад</button>
+      <button class="tab" onclick="goTab('publish',this)">📸 Публикации</button>
+      <button class="tab" onclick="goTab('settings',this)">⚙️ Настройки</button>
     </nav>
     <div style="display:flex;align-items:center;gap:8px">
       <span id="cur-user" style="font-size:11px;opacity:.7;white-space:nowrap"></span>
@@ -419,6 +2388,124 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
     <div class="card-hd"><h3>Остатки</h3><button class="btn sm" onclick="resetSold()">↺ Сбросить продано</button></div>
     <div class="inv-hdr"><span>Товар</span><span style="text-align:right">Цена</span><span style="text-align:center">Привезли</span><span style="text-align:center">Продано</span><span style="text-align:center">Остаток</span></div>
     <div id="inv-body"></div>
+  </div>
+</div>
+
+
+<!-- PUBLISH -->
+<div id="pg-publish" class="pg">
+  <div class="card">
+    <div class="card-hd"><h3>Выберите ивент</h3></div>
+    <div style="padding:1rem 1.25rem" id="pub-events-list">
+      <div class="empty">Загрузка ивентов...</div>
+    </div>
+  </div>
+
+  <div id="pub-workspace" style="display:none">
+    <!-- Photo upload -->
+    <div class="card">
+      <div class="card-hd">
+        <h3>Фотографии</h3>
+        <label class="btn grn" style="cursor:pointer">
+          + Загрузить фото
+          <input type="file" id="photo-upload" accept="image/*" multiple style="display:none" onchange="uploadPhotos(this)">
+        </label>
+      </div>
+      <div style="padding:1rem 1.25rem">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:8px">Выберите фото для публикации (минимум 1)</div>
+        <div class="photo-grid" id="photo-grid">
+          <div class="empty" style="grid-column:1/-1">Загрузите фотографии</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Post generation -->
+    <div class="card">
+      <div class="card-hd">
+        <h3>Текст поста</h3>
+        <button class="btn gold" onclick="generatePost()" id="gen-btn">✨ Сгенерировать через AI</button>
+      </div>
+      <div style="padding:1rem 1.25rem">
+        <div class="lang-tabs">
+          <button class="lang-btn on" onclick="switchLang('ru',this)">🇷🇺 Рус</button>
+          <button class="lang-btn" onclick="switchLang('en',this)">🇺🇸 Eng</button>
+          <button class="lang-btn" onclick="switchLang('ko',this)">🇰🇷 한국어</button>
+        </div>
+        <textarea id="post-text-ru" class="fi" style="width:100%;min-height:120px;resize:vertical;font-size:13px;line-height:1.6" placeholder="Текст поста на русском..."></textarea>
+        <textarea id="post-text-en" class="fi" style="width:100%;min-height:120px;resize:vertical;font-size:13px;line-height:1.6;display:none" placeholder="Post text in English..."></textarea>
+        <textarea id="post-text-ko" class="fi" style="width:100%;min-height:120px;resize:vertical;font-size:13px;line-height:1.6;display:none" placeholder="한국어 게시물 텍스트..."></textarea>
+        <div style="margin-top:8px;font-size:12px;color:var(--muted)">Хэштеги из карточки ивента добавятся автоматически</div>
+      </div>
+    </div>
+
+    <!-- Preview & Publish -->
+    <div class="card">
+      <div class="card-hd"><h3>Предпросмотр и публикация</h3></div>
+      <div style="padding:1rem 1.25rem">
+        <div class="preview-box" id="preview-box">
+          <div class="preview-photos" id="preview-photos"></div>
+          <div style="font-size:14px;line-height:1.7;white-space:pre-wrap" id="preview-text">Нажмите «Обновить предпросмотр»</div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" onclick="updatePreview()">👁 Предпросмотр</button>
+          <button class="btn grn" onclick="publishToTelegram('ru')" id="pub-btn-ru">📤 Telegram (рус)</button>
+          <button class="btn" onclick="publishToTelegram('en')">📤 Telegram (eng)</button>
+          <button class="btn" onclick="publishToTelegram('ko')">📤 Telegram (kor)</button>
+          <button class="btn" onclick="saveDraft()">💾 Сохранить черновик</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Post log -->
+  <div class="card" style="margin-top:1rem">
+    <div class="card-hd"><h3>История публикаций</h3></div>
+    <div id="post-log"><div class="empty">Нет публикаций</div></div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div id="pg-settings" class="pg">
+  <div class="settings-section">
+    <h3>🤖 Telegram</h3>
+    <div class="setting-row">
+      <span class="setting-lbl">Bot Token</span>
+      <input class="setting-input" id="s-tg-token" type="password" placeholder="1234567890:AAH...">
+      <button class="btn sm grn" onclick="saveSetting('tgToken','s-tg-token')">Сохранить</button>
+    </div>
+    <div class="setting-row">
+      <span class="setting-lbl">Channel ID</span>
+      <input class="setting-input" id="s-tg-channel" placeholder="-1001234567890">
+      <button class="btn sm grn" onclick="saveSetting('tgChannel','s-tg-channel')">Сохранить</button>
+    </div>
+    <div class="setting-row">
+      <span class="setting-lbl">Тест</span>
+      <button class="btn sm" onclick="testTelegram()">📤 Отправить тест</button>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <h3>⚙️ Публикации</h3>
+    <div class="setting-row">
+      <span class="setting-lbl">Автопубликация</span>
+      <div class="toggle-wrap">
+        <button class="toggle" id="toggle-auto" onclick="toggleAutoPublish()"></button>
+        <span id="toggle-auto-lbl" style="font-size:13px;color:var(--muted)">Выкл — черновики</span>
+      </div>
+    </div>
+    <div class="setting-row">
+      <span class="setting-lbl">Язык по умолчанию</span>
+      <select class="fi" id="s-default-lang" onchange="saveSetting('defaultLang','s-default-lang')">
+        <option value="ru">🇷🇺 Русский</option>
+        <option value="en">🇺🇸 English</option>
+        <option value="ko">🇰🇷 한국어</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <h3>📸 Instagram (скоро)</h3>
+    <div style="color:var(--muted);font-size:13px;padding:.5rem 0">Instagram интеграция будет добавлена после настройки Meta Business Account.</div>
   </div>
 </div>
 
@@ -1029,6 +3116,392 @@ function renderInventory(){
 }
 function updateBrought(fbKey,val){db.ref('products/'+fbKey).update({brought:parseInt(val)||0});}
 function resetSold(){if(!confirm('Сбросить "продано"?'))return;products.forEach(function(p){db.ref('products/'+p.fbKey).update({sold:0});});toast('Сброшено');}
+
+// ===== PUBLISH MODULE =====
+var selectedEventForPublish = null;
+var selectedPhotos = []; // [{url, name, id}]
+var uploadedPhotos = {}; // eventId -> [{url, name, id, used}]
+var posts = [];
+var settings = {tgToken:'8822476479:AAHb4B2Mu65cvWbaX_uDHuV4SsJMYNqhXrE', tgChannel:'-1003347726742', autoPublish:false, defaultLang:'ru'};
+var currentLang = 'ru';
+
+// Load settings from Firebase
+function loadSettings(){
+  db.ref('settings').once('value',function(snap){
+    if(snap.val()) Object.assign(settings, snap.val());
+    applySettings();
+  });
+}
+function applySettings(){
+  var tf=document.getElementById('s-tg-token');
+  var cf=document.getElementById('s-tg-channel');
+  var lf=document.getElementById('s-default-lang');
+  if(tf)tf.value=settings.tgToken||'';
+  if(cf)cf.value=settings.tgChannel||'';
+  if(lf)lf.value=settings.defaultLang||'ru';
+  updateToggleUI();
+}
+function saveSetting(key,inputId){
+  var val=document.getElementById(inputId).value.trim();
+  settings[key]=val;
+  db.ref('settings/'+key).set(val);
+  toast('Сохранено','ok');
+}
+function toggleAutoPublish(){
+  settings.autoPublish=!settings.autoPublish;
+  db.ref('settings/autoPublish').set(settings.autoPublish);
+  updateToggleUI();
+  toast(settings.autoPublish?'Автопубликация включена':'Черновики включены', settings.autoPublish?'ok':'warn');
+}
+function updateToggleUI(){
+  var btn=document.getElementById('toggle-auto');
+  var lbl=document.getElementById('toggle-auto-lbl');
+  if(!btn)return;
+  btn.className='toggle'+(settings.autoPublish?' on':'');
+  if(lbl)lbl.textContent=settings.autoPublish?'Вкл — автопубликация':'Выкл — черновики';
+}
+
+// Render events list in publish tab
+function renderPubEvents(){
+  var el=document.getElementById('pub-events-list');if(!el)return;
+  if(!events.length){el.innerHTML='<div class="empty">Нет ивентов — создайте их на вкладке «Ивенты»</div>';return;}
+  el.innerHTML=events.map(function(ev){
+    var evSales=sales.filter(function(s){return s.eventId===ev.fbKey;});
+    var evTotal=evSales.reduce(function(a,s){return a+s.price;},0);
+    var photos=uploadedPhotos[ev.fbKey]||[];
+    var today=new Date().toISOString().slice(0,10);
+    var isActive=ev.startDate<=today&&ev.endDate>=today;
+    var isPast=ev.endDate<today;
+    return '<div class="pub-event-card'+(selectedEventForPublish&&selectedEventForPublish.fbKey===ev.fbKey?' selected':'')+'" onclick="selectEventForPublish(''+ev.fbKey+'')">'+
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+        '<div class="event-dot" style="background:'+(isActive?'var(--k)':isPast?'var(--muted)':'var(--gold)')+'"></div>'+
+        '<div style="flex:1">'+
+          '<div style="font-weight:700;font-size:15px">'+ev.name+'</div>'+
+          '<div style="font-size:12px;color:var(--muted)">'+ev.startDate+(ev.endDate!==ev.startDate?' → '+ev.endDate:'')+(ev.location?' • '+ev.location:'')+'</div>'+
+        '</div>'+
+        '<div style="display:flex;gap:8px;align-items:center">'+
+          '<span style="font-size:12px;color:var(--muted)">📸 '+photos.length+' фото</span>'+
+          '<span style="font-size:12px;color:var(--muted)">💰 '+fmt(evTotal)+'</span>'+
+          (ev.publishStatus?'<span class="status-badge '+ev.publishStatus+'">'+ev.publishStatus+'</span>':'<span class="status-badge draft">черновик</span>')+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+function selectEventForPublish(fbKey){
+  selectedEventForPublish=events.find(function(e){return e.fbKey===fbKey;});
+  selectedPhotos=[];
+  renderPubEvents();
+  document.getElementById('pub-workspace').style.display='block';
+  renderPhotoGrid();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// Photo upload (using base64 stored in Firebase - no Storage needed!)
+function uploadPhotos(input){
+  if(!selectedEventForPublish){toast('Сначала выберите ивент','err');return;}
+  var files=Array.from(input.files);
+  if(!files.length)return;
+  var count=0;
+  files.forEach(function(file){
+    var reader=new FileReader();
+    reader.onload=function(e){
+      var photoData={
+        url:e.target.result,
+        name:file.name,
+        eventId:selectedEventForPublish.fbKey,
+        uploadedAt:Date.now(),
+        used:false
+      };
+      db.ref('photos').push(photoData,function(){
+        count++;
+        if(count===files.length){
+          toast(files.length+' фото загружено','ok');
+          loadPhotosForEvent(selectedEventForPublish.fbKey);
+        }
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadPhotosForEvent(eventId){
+  db.ref('photos').orderByChild('eventId').equalTo(eventId).once('value',function(snap){
+    var photos=[];
+    snap.forEach(function(c){photos.push(Object.assign({fbKey:c.key},c.val()));});
+    uploadedPhotos[eventId]=photos;
+    renderPhotoGrid();
+  });
+}
+
+function renderPhotoGrid(){
+  var grid=document.getElementById('photo-grid');if(!grid)return;
+  var eventId=selectedEventForPublish?selectedEventForPublish.fbKey:null;
+  var photos=eventId?(uploadedPhotos[eventId]||[]):[];
+  if(!photos.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1">Загрузите фотографии для этого ивента</div>';return;}
+  grid.innerHTML=photos.map(function(p){
+    var isSel=selectedPhotos.findIndex(function(x){return x.fbKey===p.fbKey;})>=0;
+    return '<div class="photo-item'+(isSel?' selected':'')+'" onclick="togglePhoto(''+p.fbKey+'')">'+
+      '<img src="'+p.url+'" alt="'+p.name+'">'+
+      '<div class="check">✓</div>'+
+      '<button class="photo-del" onclick="deletePhoto(event,''+p.fbKey+'')">✕</button>'+
+    '</div>';
+  }).join('');
+}
+
+function togglePhoto(fbKey){
+  var eventId=selectedEventForPublish.fbKey;
+  var photos=uploadedPhotos[eventId]||[];
+  var photo=photos.find(function(p){return p.fbKey===fbKey;});if(!photo)return;
+  var idx=selectedPhotos.findIndex(function(p){return p.fbKey===fbKey;});
+  if(idx>=0)selectedPhotos.splice(idx,1);
+  else selectedPhotos.push(photo);
+  renderPhotoGrid();
+  updatePreview();
+}
+
+function deletePhoto(e,fbKey){
+  e.stopPropagation();
+  if(!confirm('Удалить фото?'))return;
+  db.ref('photos/'+fbKey).remove();
+  var eventId=selectedEventForPublish.fbKey;
+  uploadedPhotos[eventId]=(uploadedPhotos[eventId]||[]).filter(function(p){return p.fbKey!==fbKey;});
+  selectedPhotos=selectedPhotos.filter(function(p){return p.fbKey!==fbKey;});
+  renderPhotoGrid();
+}
+
+// Language switcher
+function switchLang(lang,btn){
+  currentLang=lang;
+  document.querySelectorAll('.lang-btn').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  ['ru','en','ko'].forEach(function(l){
+    var ta=document.getElementById('post-text-'+l);
+    if(ta)ta.style.display=l===lang?'block':'none';
+  });
+}
+
+// AI post generation
+function generatePost(){
+  if(!selectedEventForPublish){toast('Сначала выберите ивент','err');return;}
+  var btn=document.getElementById('gen-btn');
+  btn.textContent='⏳ Генерирую...';btn.disabled=true;
+  var ev=selectedEventForPublish;
+  var evSales=sales.filter(function(s){return s.eventId===ev.fbKey;});
+  var total=evSales.reduce(function(a,s){return a+s.price;},0);
+  var prompt='Напиши пост для Telegram канала магазина Bardak Studio о прошедшем мероприятии. '+
+    'Мероприятие: "'+ev.name+'". '+
+    'Дата: '+ev.startDate+(ev.endDate!==ev.startDate?' — '+ev.endDate:'')+'. '+
+    (ev.location?'Место: '+ev.location+'. ':'')+
+    (ev.description?'Описание: '+ev.description+'. ':'')+
+    (total>0?'Выручка: '+fmt(total)+'. ':'')+
+    (ev.hashtags?'Хэштеги: '+ev.hashtags+'. ':'')+
+    'Напиши три версии поста: на русском, английском и корейском. '+
+    'Пиши живым дружелюбным языком, без шаблонных фраз. Каждую версию оберни в теги <ru>...</ru> <en>...</en> <ko>...</ko>. '+
+    'Добавь эмодзи. Текст не длиннее 300 символов каждый.';
+
+  fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:1000,
+      messages:[{role:'user',content:prompt}]
+    })
+  }).then(function(r){return r.json();})
+  .then(function(data){
+    var text=data.content[0].text;
+    var ru=text.match(/<ru>([\s\S]*?)<\/ru>/);
+    var en=text.match(/<en>([\s\S]*?)<\/en>/);
+    var ko=text.match(/<ko>([\s\S]*?)<\/ko>/);
+    if(ru)document.getElementById('post-text-ru').value=ru[1].trim();
+    if(en)document.getElementById('post-text-en').value=en[1].trim();
+    if(ko)document.getElementById('post-text-ko').value=ko[1].trim();
+    updatePreview();
+    toast('Пост сгенерирован!','ok');
+  }).catch(function(e){
+    toast('Ошибка генерации','err');console.error(e);
+  }).finally(function(){
+    btn.textContent='✨ Сгенерировать через AI';btn.disabled=false;
+  });
+}
+
+// Preview
+function updatePreview(){
+  var lang=currentLang;
+  var text=document.getElementById('post-text-'+lang).value;
+  document.getElementById('preview-text').textContent=text||'Введите текст поста';
+  var photosHtml=selectedPhotos.map(function(p){
+    return '<img class="preview-photo" src="'+p.url+'">';
+  }).join('');
+  document.getElementById('preview-photos').innerHTML=photosHtml;
+}
+
+// Publish to Telegram
+function publishToTelegram(lang){
+  var token=settings.tgToken;
+  var channel=settings.tgChannel;
+  if(!token||!channel){toast('Укажите Bot Token и Channel ID в настройках','err');return;}
+  var text=document.getElementById('post-text-'+lang).value;
+  var ev=selectedEventForPublish;
+  if(!ev){toast('Выберите ивент','err');return;}
+  if(!text){toast('Введите текст поста','err');return;}
+
+  var btn=document.getElementById('pub-btn-ru');
+  if(btn){btn.textContent='⏳ Публикуем...';btn.disabled=true;}
+
+  // Check for duplicates
+  db.ref('posts').orderByChild('eventId').equalTo(ev.fbKey).once('value',function(snap){
+    var existing=[];
+    snap.forEach(function(c){existing.push(c.val());});
+    var alreadyPublished=existing.find(function(p){return p.status==='published'&&p.channel==='telegram'&&p.lang===lang;});
+    if(alreadyPublished){
+      toast('Этот пост уже был опубликован!','warn');
+      if(btn){btn.textContent='📤 Telegram (рус)';btn.disabled=false;}
+      return;
+    }
+    doPublish(token,channel,text,lang,ev,btn);
+  });
+}
+
+function doPublish(token,channel,text,lang,ev,btn){
+  var photos=selectedPhotos;
+  var apiBase='https://api.telegram.org/bot'+token;
+  var promise;
+
+  if(photos.length===0){
+    // Text only
+    promise=fetch(apiBase+'/sendMessage',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:channel,text:text,parse_mode:'HTML'})
+    }).then(function(r){return r.json();});
+  } else if(photos.length===1){
+    // Single photo
+    promise=fetch(apiBase+'/sendPhoto',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:channel,photo:photos[0].url,caption:text,parse_mode:'HTML'})
+    }).then(function(r){return r.json();});
+  } else {
+    // Album (media group) - up to 10 photos
+    var media=photos.slice(0,10).map(function(p,i){
+      return {type:'photo',media:p.url,caption:i===0?text:undefined,parse_mode:i===0?'HTML':undefined};
+    });
+    promise=fetch(apiBase+'/sendMediaGroup',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:channel,media:media})
+    }).then(function(r){return r.json();});
+  }
+
+  promise.then(function(result){
+    if(result.ok){
+      // Save to posts log
+      var postData={
+        eventId:ev.fbKey,eventName:ev.name,
+        text:text,lang:lang,
+        photoCount:photos.length,
+        channel:'telegram',
+        status:'published',
+        publishedAt:Date.now(),
+        postUrl:'https://t.me/'+channel.replace('@','')
+      };
+      db.ref('posts').push(postData);
+      // Mark event as published
+      db.ref('events/'+ev.fbKey).update({publishStatus:'published'});
+      // Mark photos as used
+      photos.forEach(function(p){db.ref('photos/'+p.fbKey).update({used:true});});
+      toast('✅ Опубликовано в Telegram!','ok');
+      renderPubEvents();
+      renderPostLog();
+    } else {
+      var errMsg=result.description||'Неизвестная ошибка';
+      db.ref('posts').push({eventId:ev.fbKey,eventName:ev.name,channel:'telegram',status:'failed',error:errMsg,publishedAt:Date.now()});
+      toast('Ошибка: '+errMsg,'err');
+      renderPostLog();
+    }
+    if(btn){btn.textContent='📤 Telegram (рус)';btn.disabled=false;}
+  }).catch(function(e){
+    toast('Ошибка сети','err');
+    if(btn){btn.textContent='📤 Telegram (рус)';btn.disabled=false;}
+  });
+}
+
+function saveDraft(){
+  if(!selectedEventForPublish){toast('Выберите ивент','err');return;}
+  var ev=selectedEventForPublish;
+  db.ref('posts').push({
+    eventId:ev.fbKey,eventName:ev.name,
+    textRu:document.getElementById('post-text-ru').value,
+    textEn:document.getElementById('post-text-en').value,
+    textKo:document.getElementById('post-text-ko').value,
+    photoCount:selectedPhotos.length,
+    channel:'telegram',
+    status:'draft',
+    createdAt:Date.now()
+  });
+  db.ref('events/'+ev.fbKey).update({publishStatus:'draft'});
+  toast('Черновик сохранён','ok');
+  renderPostLog();
+}
+
+// Post log
+function renderPostLog(){
+  db.ref('posts').orderByChild('publishedAt').limitToLast(30).once('value',function(snap){
+    posts=[];snap.forEach(function(c){posts.push(Object.assign({fbKey:c.key},c.val()));});
+    posts.reverse();
+    var el=document.getElementById('post-log');if(!el)return;
+    if(!posts.length){el.innerHTML='<div class="empty">Нет публикаций</div>';return;}
+    el.innerHTML=posts.map(function(p){
+      var t=p.publishedAt?new Date(p.publishedAt).toLocaleString('ru-RU'):'—';
+      return '<div class="post-log-row">'+
+        '<span class="status-badge '+p.status+'">'+p.status+'</span>'+
+        '<span style="font-weight:700;flex:1">'+p.eventName+'</span>'+
+        '<span class="bdg" style="background:#F1EFE8;color:#5F5E5A">'+p.channel+'</span>'+
+        '<span style="font-size:12px;color:var(--muted)">'+t+'</span>'+
+        (p.postUrl?'<a href="'+p.postUrl+'" target="_blank" class="btn sm" style="text-decoration:none">🔗</a>':'')+
+        (p.error?'<span style="font-size:11px;color:var(--danger)">'+p.error+'</span>':'')+
+      '</div>';
+    }).join('');
+  });
+}
+
+// Test Telegram
+function testTelegram(){
+  var token=document.getElementById('s-tg-token').value.trim();
+  var channel=document.getElementById('s-tg-channel').value.trim();
+  if(!token||!channel){toast('Заполните токен и ID канала','err');return;}
+  fetch('https://api.telegram.org/bot'+token+'/sendMessage',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({chat_id:channel,text:'✅ Bardak Studio Bot подключён! Всё работает 🐱'})
+  }).then(function(r){return r.json();}).then(function(r){
+    if(r.ok)toast('✅ Тест прошёл!','ok');
+    else toast('Ошибка: '+r.description,'err');
+  }).catch(function(){toast('Ошибка сети','err');});
+}
+
+// Override startListeners to also load posts/settings
+var _origStartListeners=startListeners;
+startListeners=function(){
+  _origStartListeners();
+  loadSettings();
+  renderPostLog();
+  // Watch events changes to update publish tab
+  db.ref('events').on('value',function(){
+    renderPubEvents();
+  });
+};
+
+// Override goTab to load photos when switching to publish
+var _origGoTab=goTab;
+goTab=function(name,btn){
+  _origGoTab(name,btn);
+  if(name==='publish'){
+    renderPubEvents();
+    renderPostLog();
+    if(selectedEventForPublish)loadPhotosForEvent(selectedEventForPublish.fbKey);
+  }
+};
+
 </script>
 </body>
 </html>
