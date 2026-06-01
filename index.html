@@ -54,14 +54,19 @@ function updateToggleUI(){
 function renderPubEvents(){
   var el=document.getElementById('pub-events-list');if(!el)return;
   if(!events.length){el.innerHTML='<div class="empty">Нет ивентов — создайте их на вкладке «Ивенты»</div>';return;}
-  el.innerHTML=events.map(function(ev){
+  el.innerHTML='';
+  events.forEach(function(ev){
     var evSales=sales.filter(function(s){return s.eventId===ev.fbKey;});
     var evTotal=evSales.reduce(function(a,s){return a+s.price;},0);
     var photos=uploadedPhotos[ev.fbKey]||[];
     var today=new Date().toISOString().slice(0,10);
     var isActive=ev.startDate<=today&&ev.endDate>=today;
     var isPast=ev.endDate<today;
-    return '<div class="pub-event-card'+(selectedEventForPublish&&selectedEventForPublish.fbKey===ev.fbKey?' selected':'')+'" onclick="selectEventForPublish(''+ev.fbKey+'')">'+
+    var isSel=selectedEventForPublish&&selectedEventForPublish.fbKey===ev.fbKey;
+    var status=ev.publishStatus||'draft';
+    var div=document.createElement('div');
+    div.className='pub-event-card'+(isSel?' selected':'');
+    div.innerHTML=
       '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
         '<div class="event-dot" style="background:'+(isActive?'var(--k)':isPast?'var(--muted)':'var(--gold)')+'"></div>'+
         '<div style="flex:1">'+
@@ -71,11 +76,12 @@ function renderPubEvents(){
         '<div style="display:flex;gap:8px;align-items:center">'+
           '<span style="font-size:12px;color:var(--muted)">📸 '+photos.length+' фото</span>'+
           '<span style="font-size:12px;color:var(--muted)">💰 '+fmt(evTotal)+'</span>'+
-          (ev.publishStatus?'<span class="status-badge '+ev.publishStatus+'">'+ev.publishStatus+'</span>':'<span class="status-badge draft">черновик</span>')+
+          '<span class="status-badge '+status+'">'+status+'</span>'+
         '</div>'+
-      '</div>'+
-    '</div>';
-  }).join('');
+      '</div>';
+    div.onclick=function(){selectEventForPublish(ev.fbKey);};
+    el.appendChild(div);
+  });
 }
 
 function selectEventForPublish(fbKey){
@@ -124,20 +130,7 @@ function loadPhotosForEvent(eventId){
   });
 }
 
-function renderPhotoGrid(){
-  var grid=document.getElementById('photo-grid');if(!grid)return;
-  var eventId=selectedEventForPublish?selectedEventForPublish.fbKey:null;
-  var photos=eventId?(uploadedPhotos[eventId]||[]):[];
-  if(!photos.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1">Загрузите фотографии для этого ивента</div>';return;}
-  grid.innerHTML=photos.map(function(p){
-    var isSel=selectedPhotos.findIndex(function(x){return x.fbKey===p.fbKey;})>=0;
-    return '<div class="photo-item'+(isSel?' selected':'')+'" onclick="togglePhoto(''+p.fbKey+'')">'+
-      '<img src="'+p.url+'" alt="'+p.name+'">'+
-      '<div class="check">✓</div>'+
-      '<button class="photo-del" onclick="deletePhoto(event,''+p.fbKey+'')">✕</button>'+
-    '</div>';
-  }).join('');
-}
+
 
 function togglePhoto(fbKey){
   var eventId=selectedEventForPublish.fbKey;
@@ -150,8 +143,7 @@ function togglePhoto(fbKey){
   updatePreview();
 }
 
-function deletePhoto(e,fbKey){
-  e.stopPropagation();
+function deletePhoto(fbKey){
   if(!confirm('Удалить фото?'))return;
   db.ref('photos/'+fbKey).remove();
   var eventId=selectedEventForPublish.fbKey;
@@ -448,7 +440,7 @@ function renderPubEvents(){
     var today=new Date().toISOString().slice(0,10);
     var isActive=ev.startDate<=today&&ev.endDate>=today;
     var isPast=ev.endDate<today;
-    return '<div class="pub-event-card'+(selectedEventForPublish&&selectedEventForPublish.fbKey===ev.fbKey?' selected':'')+'" onclick="selectEventForPublish(''+ev.fbKey+'')">'+
+    return '<div class="pub-event-card'+(selectedEventForPublish&&selectedEventForPublish.fbKey===ev.fbKey?' selected':'')+'" data-id="'+ev.fbKey+'" onclick="selectEventForPublish(this.dataset.id)">'+
       '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
         '<div class="event-dot" style="background:'+(isActive?'var(--k)':isPast?'var(--muted)':'var(--gold)')+'"></div>'+
         '<div style="flex:1">'+
@@ -511,20 +503,7 @@ function loadPhotosForEvent(eventId){
   });
 }
 
-function renderPhotoGrid(){
-  var grid=document.getElementById('photo-grid');if(!grid)return;
-  var eventId=selectedEventForPublish?selectedEventForPublish.fbKey:null;
-  var photos=eventId?(uploadedPhotos[eventId]||[]):[];
-  if(!photos.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1">Загрузите фотографии для этого ивента</div>';return;}
-  grid.innerHTML=photos.map(function(p){
-    var isSel=selectedPhotos.findIndex(function(x){return x.fbKey===p.fbKey;})>=0;
-    return '<div class="photo-item'+(isSel?' selected':'')+'" onclick="togglePhoto(''+p.fbKey+'')">'+
-      '<img src="'+p.url+'" alt="'+p.name+'">'+
-      '<div class="check">✓</div>'+
-      '<button class="photo-del" onclick="deletePhoto(event,''+p.fbKey+'')">✕</button>'+
-    '</div>';
-  }).join('');
-}
+
 
 function togglePhoto(fbKey){
   var eventId=selectedEventForPublish.fbKey;
@@ -537,8 +516,7 @@ function togglePhoto(fbKey){
   updatePreview();
 }
 
-function deletePhoto(e,fbKey){
-  e.stopPropagation();
+function deletePhoto(fbKey){
   if(!confirm('Удалить фото?'))return;
   db.ref('photos/'+fbKey).remove();
   var eventId=selectedEventForPublish.fbKey;
@@ -835,7 +813,7 @@ function renderPubEvents(){
     var today=new Date().toISOString().slice(0,10);
     var isActive=ev.startDate<=today&&ev.endDate>=today;
     var isPast=ev.endDate<today;
-    return '<div class="pub-event-card'+(selectedEventForPublish&&selectedEventForPublish.fbKey===ev.fbKey?' selected':'')+'" onclick="selectEventForPublish(''+ev.fbKey+'')">'+
+    return '<div class="pub-event-card'+(selectedEventForPublish&&selectedEventForPublish.fbKey===ev.fbKey?' selected':'')+'" data-id="'+ev.fbKey+'" onclick="selectEventForPublish(this.dataset.id)">'+
       '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
         '<div class="event-dot" style="background:'+(isActive?'var(--k)':isPast?'var(--muted)':'var(--gold)')+'"></div>'+
         '<div style="flex:1">'+
@@ -898,20 +876,7 @@ function loadPhotosForEvent(eventId){
   });
 }
 
-function renderPhotoGrid(){
-  var grid=document.getElementById('photo-grid');if(!grid)return;
-  var eventId=selectedEventForPublish?selectedEventForPublish.fbKey:null;
-  var photos=eventId?(uploadedPhotos[eventId]||[]):[];
-  if(!photos.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1">Загрузите фотографии для этого ивента</div>';return;}
-  grid.innerHTML=photos.map(function(p){
-    var isSel=selectedPhotos.findIndex(function(x){return x.fbKey===p.fbKey;})>=0;
-    return '<div class="photo-item'+(isSel?' selected':'')+'" onclick="togglePhoto(''+p.fbKey+'')">'+
-      '<img src="'+p.url+'" alt="'+p.name+'">'+
-      '<div class="check">✓</div>'+
-      '<button class="photo-del" onclick="deletePhoto(event,''+p.fbKey+'')">✕</button>'+
-    '</div>';
-  }).join('');
-}
+
 
 function togglePhoto(fbKey){
   var eventId=selectedEventForPublish.fbKey;
@@ -924,8 +889,7 @@ function togglePhoto(fbKey){
   updatePreview();
 }
 
-function deletePhoto(e,fbKey){
-  e.stopPropagation();
+function deletePhoto(fbKey){
   if(!confirm('Удалить фото?'))return;
   db.ref('photos/'+fbKey).remove();
   var eventId=selectedEventForPublish.fbKey;
@@ -1222,7 +1186,7 @@ function renderPubEvents(){
     var today=new Date().toISOString().slice(0,10);
     var isActive=ev.startDate<=today&&ev.endDate>=today;
     var isPast=ev.endDate<today;
-    return '<div class="pub-event-card'+(selectedEventForPublish&&selectedEventForPublish.fbKey===ev.fbKey?' selected':'')+'" onclick="selectEventForPublish(''+ev.fbKey+'')">'+
+    return '<div class="pub-event-card'+(selectedEventForPublish&&selectedEventForPublish.fbKey===ev.fbKey?' selected':'')+'" data-id="'+ev.fbKey+'" onclick="selectEventForPublish(this.dataset.id)">'+
       '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
         '<div class="event-dot" style="background:'+(isActive?'var(--k)':isPast?'var(--muted)':'var(--gold)')+'"></div>'+
         '<div style="flex:1">'+
@@ -1285,20 +1249,7 @@ function loadPhotosForEvent(eventId){
   });
 }
 
-function renderPhotoGrid(){
-  var grid=document.getElementById('photo-grid');if(!grid)return;
-  var eventId=selectedEventForPublish?selectedEventForPublish.fbKey:null;
-  var photos=eventId?(uploadedPhotos[eventId]||[]):[];
-  if(!photos.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1">Загрузите фотографии для этого ивента</div>';return;}
-  grid.innerHTML=photos.map(function(p){
-    var isSel=selectedPhotos.findIndex(function(x){return x.fbKey===p.fbKey;})>=0;
-    return '<div class="photo-item'+(isSel?' selected':'')+'" onclick="togglePhoto(''+p.fbKey+'')">'+
-      '<img src="'+p.url+'" alt="'+p.name+'">'+
-      '<div class="check">✓</div>'+
-      '<button class="photo-del" onclick="deletePhoto(event,''+p.fbKey+'')">✕</button>'+
-    '</div>';
-  }).join('');
-}
+
 
 function togglePhoto(fbKey){
   var eventId=selectedEventForPublish.fbKey;
@@ -1311,8 +1262,7 @@ function togglePhoto(fbKey){
   updatePreview();
 }
 
-function deletePhoto(e,fbKey){
-  e.stopPropagation();
+function deletePhoto(fbKey){
   if(!confirm('Удалить фото?'))return;
   db.ref('photos/'+fbKey).remove();
   var eventId=selectedEventForPublish.fbKey;
@@ -1609,7 +1559,7 @@ function renderPubEvents(){
     var today=new Date().toISOString().slice(0,10);
     var isActive=ev.startDate<=today&&ev.endDate>=today;
     var isPast=ev.endDate<today;
-    return '<div class="pub-event-card'+(selectedEventForPublish&&selectedEventForPublish.fbKey===ev.fbKey?' selected':'')+'" onclick="selectEventForPublish(''+ev.fbKey+'')">'+
+    return '<div class="pub-event-card'+(selectedEventForPublish&&selectedEventForPublish.fbKey===ev.fbKey?' selected':'')+'" data-id="'+ev.fbKey+'" onclick="selectEventForPublish(this.dataset.id)">'+
       '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
         '<div class="event-dot" style="background:'+(isActive?'var(--k)':isPast?'var(--muted)':'var(--gold)')+'"></div>'+
         '<div style="flex:1">'+
@@ -1672,20 +1622,7 @@ function loadPhotosForEvent(eventId){
   });
 }
 
-function renderPhotoGrid(){
-  var grid=document.getElementById('photo-grid');if(!grid)return;
-  var eventId=selectedEventForPublish?selectedEventForPublish.fbKey:null;
-  var photos=eventId?(uploadedPhotos[eventId]||[]):[];
-  if(!photos.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1">Загрузите фотографии для этого ивента</div>';return;}
-  grid.innerHTML=photos.map(function(p){
-    var isSel=selectedPhotos.findIndex(function(x){return x.fbKey===p.fbKey;})>=0;
-    return '<div class="photo-item'+(isSel?' selected':'')+'" onclick="togglePhoto(''+p.fbKey+'')">'+
-      '<img src="'+p.url+'" alt="'+p.name+'">'+
-      '<div class="check">✓</div>'+
-      '<button class="photo-del" onclick="deletePhoto(event,''+p.fbKey+'')">✕</button>'+
-    '</div>';
-  }).join('');
-}
+
 
 function togglePhoto(fbKey){
   var eventId=selectedEventForPublish.fbKey;
@@ -1698,8 +1635,7 @@ function togglePhoto(fbKey){
   updatePreview();
 }
 
-function deletePhoto(e,fbKey){
-  e.stopPropagation();
+function deletePhoto(fbKey){
   if(!confirm('Удалить фото?'))return;
   db.ref('photos/'+fbKey).remove();
   var eventId=selectedEventForPublish.fbKey;
@@ -2729,20 +2665,28 @@ function renderMultiList(){
   var list=query?products.filter(function(p){return p.name.toLowerCase().indexOf(query)>=0;}):products;
   var el=document.getElementById('multi-list');
   if(!list.length){el.innerHTML='<div class="empty">Ничего не найдено</div>';return;}
-  el.innerHTML=list.map(function(p){
+  el.innerHTML='';
+  list.forEach(function(p){
     var qty=cart[p.id]||0;
-    var sel=qty>0?'selected':''
-    return '<div class="multi-item '+sel+'" id="mi-'+p.id+'">'+
-      '<div class="multi-item-owner bdg '+p.owner[0]+'">'+ownerLabel(p.owner).slice(0,2)+'</div>'+
+    var div=document.createElement('div');
+    div.className='multi-item'+(qty>0?' selected':'');
+    div.id='mi-'+p.id;
+    var ownerShort=ownerLabel(p.owner).slice(0,2);
+    var ownerClass=p.owner[0];
+    div.innerHTML='<div class="multi-item-owner bdg '+ownerClass+'">'+ownerShort+'</div>'+
       '<div class="multi-item-name">'+p.name+'</div>'+
       '<div class="multi-item-price">'+fmt(p.price)+'</div>'+
       '<div class="multi-qty">'+
-        '<button class="qty-btn" onclick="changeQty(\''+p.id+'\',\'-1\')">−</button>'+
+        '<button class="qty-btn" id="qm-'+p.id+'">-</button>'+
         '<span class="qty-val" id="qty-'+p.id+'">'+qty+'</span>'+
-        '<button class="qty-btn" onclick="changeQty(\''+p.id+'\',\'1\')">+</button>'+
-      '</div>'+
-    '</div>';
-  }).join('');
+        '<button class="qty-btn" id="qp-'+p.id+'">+</button>'+
+      '</div>';
+    el.appendChild(div);
+    (function(pid){
+      document.getElementById('qm-'+pid).onclick=function(e){e.stopPropagation();changeQty(pid,-1);};
+      document.getElementById('qp-'+pid).onclick=function(e){e.stopPropagation();changeQty(pid,1);};
+    })(p.id);
+  });
 }
 function filterMultiList(){renderMultiList();}
 function changeQty(productId,delta){
@@ -3172,7 +3116,7 @@ function renderPubEvents(){
     var today=new Date().toISOString().slice(0,10);
     var isActive=ev.startDate<=today&&ev.endDate>=today;
     var isPast=ev.endDate<today;
-    return '<div class="pub-event-card'+(selectedEventForPublish&&selectedEventForPublish.fbKey===ev.fbKey?' selected':'')+'" onclick="selectEventForPublish(''+ev.fbKey+'')">'+
+    return '<div class="pub-event-card'+(selectedEventForPublish&&selectedEventForPublish.fbKey===ev.fbKey?' selected':'')+'" data-id="'+ev.fbKey+'" onclick="selectEventForPublish(this.dataset.id)">'+
       '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
         '<div class="event-dot" style="background:'+(isActive?'var(--k)':isPast?'var(--muted)':'var(--gold)')+'"></div>'+
         '<div style="flex:1">'+
@@ -3235,20 +3179,7 @@ function loadPhotosForEvent(eventId){
   });
 }
 
-function renderPhotoGrid(){
-  var grid=document.getElementById('photo-grid');if(!grid)return;
-  var eventId=selectedEventForPublish?selectedEventForPublish.fbKey:null;
-  var photos=eventId?(uploadedPhotos[eventId]||[]):[];
-  if(!photos.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1">Загрузите фотографии для этого ивента</div>';return;}
-  grid.innerHTML=photos.map(function(p){
-    var isSel=selectedPhotos.findIndex(function(x){return x.fbKey===p.fbKey;})>=0;
-    return '<div class="photo-item'+(isSel?' selected':'')+'" onclick="togglePhoto(''+p.fbKey+'')">'+
-      '<img src="'+p.url+'" alt="'+p.name+'">'+
-      '<div class="check">✓</div>'+
-      '<button class="photo-del" onclick="deletePhoto(event,''+p.fbKey+'')">✕</button>'+
-    '</div>';
-  }).join('');
-}
+
 
 function togglePhoto(fbKey){
   var eventId=selectedEventForPublish.fbKey;
@@ -3261,8 +3192,7 @@ function togglePhoto(fbKey){
   updatePreview();
 }
 
-function deletePhoto(e,fbKey){
-  e.stopPropagation();
+function deletePhoto(fbKey){
   if(!confirm('Удалить фото?'))return;
   db.ref('photos/'+fbKey).remove();
   var eventId=selectedEventForPublish.fbKey;
