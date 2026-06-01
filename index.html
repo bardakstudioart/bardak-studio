@@ -246,7 +246,7 @@ function publishToTelegram(lang){
   });
 }
 
-function doPublish(token,channel,text,lang,ev,btn){
+function doPublish(token,channel,text,lang,ev,btn,photoIds){
   var photos=selectedPhotos;
   var apiBase='https://api.telegram.org/bot'+token;
   var promise;
@@ -298,6 +298,7 @@ function doPublish(token,channel,text,lang,ev,btn){
         eventId:ev.fbKey,eventName:ev.name,
         text:text,lang:lang,
         photoCount:photos.length,
+        photoIds:photoIds||'',
         channel:'telegram',
         status:'published',
         publishedAt:Date.now(),
@@ -636,7 +637,7 @@ function publishToTelegram(lang){
   });
 }
 
-function doPublish(token,channel,text,lang,ev,btn){
+function doPublish(token,channel,text,lang,ev,btn,photoIds){
   var photos=selectedPhotos;
   var apiBase='https://api.telegram.org/bot'+token;
   var promise;
@@ -688,6 +689,7 @@ function doPublish(token,channel,text,lang,ev,btn){
         eventId:ev.fbKey,eventName:ev.name,
         text:text,lang:lang,
         photoCount:photos.length,
+        photoIds:photoIds||'',
         channel:'telegram',
         status:'published',
         publishedAt:Date.now(),
@@ -1026,7 +1028,7 @@ function publishToTelegram(lang){
   });
 }
 
-function doPublish(token,channel,text,lang,ev,btn){
+function doPublish(token,channel,text,lang,ev,btn,photoIds){
   var photos=selectedPhotos;
   var apiBase='https://api.telegram.org/bot'+token;
   var promise;
@@ -1078,6 +1080,7 @@ function doPublish(token,channel,text,lang,ev,btn){
         eventId:ev.fbKey,eventName:ev.name,
         text:text,lang:lang,
         photoCount:photos.length,
+        photoIds:photoIds||'',
         channel:'telegram',
         status:'published',
         publishedAt:Date.now(),
@@ -1416,7 +1419,7 @@ function publishToTelegram(lang){
   });
 }
 
-function doPublish(token,channel,text,lang,ev,btn){
+function doPublish(token,channel,text,lang,ev,btn,photoIds){
   var photos=selectedPhotos;
   var apiBase='https://api.telegram.org/bot'+token;
   var promise;
@@ -1468,6 +1471,7 @@ function doPublish(token,channel,text,lang,ev,btn){
         eventId:ev.fbKey,eventName:ev.name,
         text:text,lang:lang,
         photoCount:photos.length,
+        photoIds:photoIds||'',
         channel:'telegram',
         status:'published',
         publishedAt:Date.now(),
@@ -1806,7 +1810,7 @@ function publishToTelegram(lang){
   });
 }
 
-function doPublish(token,channel,text,lang,ev,btn){
+function doPublish(token,channel,text,lang,ev,btn,photoIds){
   var photos=selectedPhotos;
   var apiBase='https://api.telegram.org/bot'+token;
   var promise;
@@ -1858,6 +1862,7 @@ function doPublish(token,channel,text,lang,ev,btn){
         eventId:ev.fbKey,eventName:ev.name,
         text:text,lang:lang,
         photoCount:photos.length,
+        photoIds:photoIds||'',
         channel:'telegram',
         status:'published',
         publishedAt:Date.now(),
@@ -3446,23 +3451,30 @@ function publishToTelegram(lang){
   if(!text){toast('Введите текст поста','err');return;}
 
   var btn=document.getElementById('pub-btn-ru');
-  if(btn){btn.textContent='⏳ Публикуем...';btn.disabled=true;}
+  if(btn){btn.textContent='Публикуем...';btn.disabled=true;}
 
-  // Check for duplicates
+  // Check only for exact duplicate (same text + same photos)
+  var photoIds=selectedPhotos.map(function(p){return p.fbKey;}).sort().join(',');
   db.ref('posts').orderByChild('eventId').equalTo(ev.fbKey).once('value',function(snap){
     var existing=[];
     snap.forEach(function(c){existing.push(c.val());});
-    var alreadyPublished=existing.find(function(p){return p.status==='published'&&p.channel==='telegram'&&p.lang===lang;});
-    if(alreadyPublished){
-      toast('Этот пост уже был опубликован!','warn');
-      if(btn){btn.textContent='📤 Telegram (рус)';btn.disabled=false;}
+    var exactDup=existing.find(function(p){
+      return p.status==='published'
+        && p.channel==='telegram'
+        && p.lang===lang
+        && p.text===text
+        && (p.photoIds||'')===(photoIds);
+    });
+    if(exactDup){
+      toast('Такой пост уже опубликован (тот же текст и фото)','warn');
+      if(btn){btn.textContent='Telegram (рус)';btn.disabled=false;}
       return;
     }
-    doPublish(token,channel,text,lang,ev,btn);
+    doPublish(token,channel,text,lang,ev,btn,photoIds);
   });
 }
 
-function doPublish(token,channel,text,lang,ev,btn){
+function doPublish(token,channel,text,lang,ev,btn,photoIds){
   var photos=selectedPhotos;
   var apiBase='https://api.telegram.org/bot'+token;
   var promise;
@@ -3514,6 +3526,7 @@ function doPublish(token,channel,text,lang,ev,btn){
         eventId:ev.fbKey,eventName:ev.name,
         text:text,lang:lang,
         photoCount:photos.length,
+        photoIds:photoIds||'',
         channel:'telegram',
         status:'published',
         publishedAt:Date.now(),
