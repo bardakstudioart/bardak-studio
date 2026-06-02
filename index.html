@@ -2501,12 +2501,31 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
           <div class="preview-photos" id="preview-photos"></div>
           <div style="font-size:14px;line-height:1.7;white-space:pre-wrap" id="preview-text">Нажмите «Обновить предпросмотр»</div>
         </div>
-        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <button class="btn" onclick="updatePreview()">👁 Предпросмотр</button>
-          <button class="btn grn" onclick="publishToTelegram('ru')" id="pub-btn-ru">📤 Telegram (рус)</button>
-          <button class="btn" onclick="publishToTelegram('en')">📤 Telegram (eng)</button>
-          <button class="btn" onclick="publishToTelegram('ko')">📤 Telegram (kor)</button>
-          <button class="btn" onclick="saveDraft()">💾 Сохранить черновик</button>
+          <div style="width:1px;height:24px;background:var(--border)"></div>
+          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Опубликовать в:</div>
+          <button class="btn grn" id="pub-btn-bardak" onclick="publishViaBackend('bardak')">
+            🎨 Bardak Studio
+          </button>
+          <button class="btn" id="pub-btn-sealmary" onclick="publishViaBackend('sealmary')" style="background:var(--ml);color:var(--m2);border-color:var(--m)">
+            🦭 SealMary
+          </button>
+          <button class="btn pri" id="pub-btn-both" onclick="publishViaBackend('both')">
+            📤 Telegram оба
+          </button>
+          <div style="width:1px;height:24px;background:var(--border)"></div>
+          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Instagram:</div>
+          <button class="btn" id="pub-btn-ig-bardak" onclick="publishViaInstagram('bardak')" style="background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:white;border:none">
+            🎨 Bardak IG
+          </button>
+          <button class="btn" id="pub-btn-ig-sealmary" onclick="publishViaInstagram('sealmary')" style="background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:white;border:none;opacity:.6" title="Добавить после настройки SealMary">
+            🦭 SealMary IG
+          </button>
+          <button class="btn" onclick="saveDraft()">💾 Черновик</button>
+        </div>
+        <div style="margin-top:8px;font-size:12px;color:var(--muted)" id="backend-status">
+          ⚙️ Язык поста: выбранная вкладка выше
         </div>
       </div>
     </div>
@@ -2522,7 +2541,21 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
 <!-- SETTINGS -->
 <div id="pg-settings" class="pg">
   <div class="settings-section">
-    <h3>🤖 Telegram</h3>
+    <h3>⚙️ Backend сервер</h3>
+    <div class="setting-row">
+      <span class="setting-lbl">URL сервера</span>
+      <input class="setting-input" id="s-backend-url" placeholder="http://localhost:5000">
+      <button class="btn sm grn" onclick="saveBackendUrl()">Сохранить</button>
+    </div>
+    <div class="setting-row">
+      <span class="setting-lbl">Статус</span>
+      <button class="btn sm" onclick="checkBackend()">🔍 Проверить</button>
+      <span id="backend-check-result" style="font-size:13px;color:var(--muted)"></span>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <h3>🎨 Bardak Studio Bot</h3>
     <div class="setting-row">
       <span class="setting-lbl">Bot Token</span>
       <input class="setting-input" id="s-tg-token" type="password" placeholder="1234567890:AAH...">
@@ -2535,7 +2568,25 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
     </div>
     <div class="setting-row">
       <span class="setting-lbl">Тест</span>
-      <button class="btn sm" onclick="testTelegram()">📤 Отправить тест</button>
+      <button class="btn sm" onclick="testBot('bardak')">📤 Тест Bardak</button>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <h3>🦭 SealMary Bot</h3>
+    <div class="setting-row">
+      <span class="setting-lbl">Bot Token</span>
+      <input class="setting-input" id="s-sm-token" type="password" placeholder="Добавить когда Маша создаст бота">
+      <button class="btn sm grn" onclick="saveSetting('smToken','s-sm-token')">Сохранить</button>
+    </div>
+    <div class="setting-row">
+      <span class="setting-lbl">Channel ID</span>
+      <input class="setting-input" id="s-sm-channel" placeholder="-1001234567890">
+      <button class="btn sm grn" onclick="saveSetting('smChannel','s-sm-channel')">Сохранить</button>
+    </div>
+    <div class="setting-row">
+      <span class="setting-lbl">Тест</span>
+      <button class="btn sm" onclick="testBot('sealmary')" style="background:var(--ml);color:var(--m2);border-color:var(--m)">📤 Тест SealMary</button>
     </div>
   </div>
 
@@ -2559,8 +2610,44 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
   </div>
 
   <div class="settings-section">
-    <h3>📸 Instagram (скоро)</h3>
-    <div style="color:var(--muted);font-size:13px;padding:.5rem 0">Instagram интеграция будет добавлена после настройки Meta Business Account.</div>
+    <h3>📸 Bardak Studio Instagram</h3>
+    <div class="setting-row">
+      <span class="setting-lbl">Access Token</span>
+      <input class="setting-input" id="s-ig-token" type="password" placeholder="Вставьте токен из Meta Developer">
+      <button class="btn sm grn" onclick="saveIgToken('bardak')">Сохранить</button>
+    </div>
+    <div class="setting-row">
+      <span class="setting-lbl">Instagram User ID</span>
+      <input class="setting-input" id="s-ig-userid" placeholder="Получить автоматически →">
+      <button class="btn sm" onclick="getIgUserId()">🔍 Получить ID</button>
+    </div>
+    <div class="setting-row">
+      <span class="setting-lbl">imgbb API Key</span>
+      <input class="setting-input" id="s-imgbb-key" type="password" placeholder="imgbb.com → API → Get API key (бесплатно)">
+      <button class="btn sm grn" onclick="saveSetting('imgbbKey','s-imgbb-key')">Сохранить</button>
+    </div>
+    <div class="setting-row">
+      <span class="setting-lbl">Тест</span>
+      <button class="btn sm" onclick="checkIgProfile()" style="background:linear-gradient(135deg,#f09433,#dc2743,#bc1888);color:white;border:none">📸 Проверить профиль</button>
+      <span id="ig-check-result" style="font-size:12px;color:var(--muted);margin-left:8px"></span>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-top:8px;padding:8px;background:#F7F5F0;border-radius:8px">
+      ⚠️ Нужен: Professional аккаунт Instagram + Facebook страница + Meta Developer App
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <h3>📸 SealMary Instagram</h3>
+    <div class="setting-row">
+      <span class="setting-lbl">Access Token</span>
+      <input class="setting-input" id="s-ig-sm-token" type="password" placeholder="Добавить после настройки Маши">
+      <button class="btn sm grn" onclick="saveIgToken('sealmary')">Сохранить</button>
+    </div>
+    <div class="setting-row">
+      <span class="setting-lbl">Instagram User ID</span>
+      <input class="setting-input" id="s-ig-sm-userid" placeholder="Получить автоматически →">
+      <button class="btn sm" onclick="getIgUserId('sealmary')">🔍 Получить ID</button>
+    </div>
   </div>
 </div>
 
@@ -3918,6 +4005,226 @@ function generatePost(){
     toast('Пост сгенерирован!','ok');
     if(btn){btn.textContent='Другой вариант';btn.disabled=false;}
   },400);
+}
+
+
+// ===== BACKEND INTEGRATION =====
+var BACKEND_URL = localStorage.getItem('backendUrl') || 'https://web-production-b56583.up.railway.app';
+
+function saveBackendUrl(){
+  var url = document.getElementById('s-backend-url').value.trim().replace(/\/+$/,'');
+  if(!url) return;
+  BACKEND_URL = url;
+  localStorage.setItem('backendUrl', url);
+  toast('URL сохранён','ok');
+}
+
+function checkBackend(){
+  var el = document.getElementById('backend-check-result');
+  el.textContent = 'Проверяю...';
+  fetch(BACKEND_URL+'/health')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      el.textContent = '✅ Сервер работает! Боты: '+d.bots.join(', ');
+      el.style.color = 'var(--k)';
+    })
+    .catch(function(){
+      el.textContent = '❌ Сервер недоступен — запустите server.py';
+      el.style.color = 'var(--danger)';
+    });
+}
+
+function testBot(botKey){
+  fetch(BACKEND_URL+'/test', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({bot: botKey})
+  }).then(function(r){return r.json();})
+  .then(function(d){
+    if(d.ok) toast('✅ Тест отправлен!','ok');
+    else toast('Ошибка: '+(d.description||d.error),'err');
+  }).catch(function(){
+    toast('Сервер недоступен — запустите server.py','err');
+  });
+}
+
+function publishViaBackend(botKey){
+  var ev = selectedEventForPublish;
+  if(!ev){toast('Выберите ивент','err');return;}
+  var text = document.getElementById('post-text-'+currentLang).value;
+  if(!text){toast('Введите текст поста','err');return;}
+
+  var btnId = 'pub-btn-'+botKey;
+  var btn = document.getElementById(btnId);
+  var originalText = btn ? btn.textContent : '';
+  if(btn){btn.textContent='Публикуем...';btn.disabled=true;}
+
+  var statusEl = document.getElementById('backend-status');
+  if(statusEl) statusEl.textContent = '⏳ Отправляю в Telegram...';
+
+  var photoData = selectedPhotos.map(function(p){return p.url;});
+
+  fetch(BACKEND_URL+'/publish', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      bot: botKey,
+      text: text,
+      photos: photoData
+    })
+  }).then(function(r){return r.json();})
+  .then(function(d){
+    if(d.ok){
+      // Save to history
+      var currentUser = firebase.auth().currentUser;
+      var publisher = currentUser?(USER_NAMES[currentUser.email]||currentUser.email):'Неизвестно';
+      var photoIds = selectedPhotos.map(function(p){return p.fbKey;}).sort().join(',');
+      var botName = botKey==='bardak'?'Bardak Studio':botKey==='sealmary'?'SealMary':'Оба канала';
+
+      db.ref('posts').push({
+        eventId:ev.fbKey, eventName:ev.name,
+        text:text, lang:currentLang,
+        photoCount:selectedPhotos.length,
+        photoIds:photoIds,
+        channel:'telegram',
+        bot:botKey, botName:botName,
+        publisher:publisher,
+        status:'published',
+        publishedAt:Date.now()
+      });
+
+      selectedPhotos.forEach(function(p){
+        db.ref('photos/'+p.fbKey).update({used:true});
+      });
+
+      toast('✅ Опубликовано в '+botName+'!','ok');
+      if(statusEl) statusEl.textContent = '✅ Опубликовано в '+botName+'!';
+      renderPubEvents(); renderPostLog();
+    } else {
+      var errors = d.results ? d.results.map(function(r){return r.name+': '+(r.error||'ок');}).join(', ') : (d.error||'Ошибка');
+      toast('Ошибка: '+errors,'err');
+      if(statusEl) statusEl.textContent = '❌ '+errors;
+
+      db.ref('posts').push({
+        eventId:ev.fbKey, eventName:ev.name,
+        channel:'telegram', bot:botKey,
+        status:'failed', error:errors,
+        publishedAt:Date.now()
+      });
+      renderPostLog();
+    }
+    if(btn){btn.textContent=originalText;btn.disabled=false;}
+  }).catch(function(e){
+    toast('Сервер недоступен — запустите server.py','err');
+    if(statusEl) statusEl.textContent = '❌ Сервер недоступен. Запустите server.py на компьютере.';
+    if(btn){btn.textContent=originalText;btn.disabled=false;}
+  });
+}
+
+// Init backend URL in settings
+(function(){
+  var el = document.getElementById('s-backend-url');
+  if(el) el.value = BACKEND_URL;
+})();
+
+
+// ===== INSTAGRAM PUBLISH =====
+function saveIgToken(account){
+  var tokenEl = document.getElementById(account==='bardak'?'s-ig-token':'s-ig-sm-token');
+  var userEl = document.getElementById(account==='bardak'?'s-ig-userid':'s-ig-sm-userid');
+  if(!tokenEl || !tokenEl.value.trim()){toast('Вставьте токен','err');return;}
+  var key = account==='bardak'?'igToken':'smIgToken';
+  settings[key] = tokenEl.value.trim();
+  db.ref('settings/'+key).set(settings[key]);
+  toast('Токен сохранён','ok');
+}
+
+function getIgUserId(account){
+  account = account || 'bardak';
+  var tokenEl = document.getElementById(account==='bardak'?'s-ig-token':'s-ig-sm-token');
+  var userEl = document.getElementById(account==='bardak'?'s-ig-userid':'s-ig-sm-userid');
+  if(!tokenEl || !tokenEl.value.trim()){toast('Сначала вставьте токен','err');return;}
+  var resultEl = document.getElementById('ig-check-result');
+  if(resultEl) resultEl.textContent = 'Получаю ID...';
+  fetch(BACKEND_URL+'/ig/profile',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({token:tokenEl.value.trim()})
+  }).then(function(r){return r.json();})
+  .then(function(d){
+    if(d.id){
+      if(userEl) userEl.value = d.id;
+      var key = account==='bardak'?'igUserId':'smIgUserId';
+      settings[key] = d.id;
+      db.ref('settings/'+key).set(d.id);
+      if(resultEl) resultEl.textContent = '✅ @'+d.username+' ('+d.account_type+')';
+      if(resultEl) resultEl.style.color='var(--k)';
+      toast('ID получен: '+d.id,'ok');
+    } else {
+      if(resultEl) resultEl.textContent = '❌ '+(d.error||JSON.stringify(d));
+      if(resultEl) resultEl.style.color='var(--danger)';
+    }
+  }).catch(function(){toast('Сервер недоступен','err');});
+}
+
+function checkIgProfile(){getIgUserId('bardak');}
+
+function publishViaInstagram(account){
+  var ev = selectedEventForPublish;
+  if(!ev){toast('Выберите ивент','err');return;}
+  if(selectedPhotos.length===0){toast('Выберите хотя бы одно фото','err');return;}
+  var text = document.getElementById('post-text-'+currentLang).value;
+  if(!text){toast('Введите текст поста','err');return;}
+
+  var btnId = 'pub-btn-ig-'+account;
+  var btn = document.getElementById(btnId);
+  var origText = btn?btn.textContent:'';
+  if(btn){btn.textContent='⏳ Публикую...';btn.disabled=true;}
+
+  var statusEl = document.getElementById('backend-status');
+  if(statusEl) statusEl.textContent = '⏳ Публикую в Instagram...';
+
+  var photoData = selectedPhotos.map(function(p){return p.url;});
+
+  fetch(BACKEND_URL+'/publish/instagram',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({account:account, text:text, photos:photoData})
+  }).then(function(r){return r.json();})
+  .then(function(d){
+    if(d.ok){
+      var currentUser = firebase.auth().currentUser;
+      var publisher = currentUser?(USER_NAMES[currentUser.email]||currentUser.email):'Неизвестно';
+      var photoIds = selectedPhotos.map(function(p){return p.fbKey;}).sort().join(',');
+      var accName = account==='bardak'?'Bardak Studio IG':'SealMary IG';
+      db.ref('posts').push({
+        eventId:ev.fbKey,eventName:ev.name,
+        text:text,lang:currentLang,
+        photoCount:selectedPhotos.length,
+        photoIds:photoIds,
+        channel:'instagram',
+        bot:account,botName:accName,
+        publisher:publisher,
+        status:'published',
+        publishedAt:Date.now()
+      });
+      selectedPhotos.forEach(function(p){db.ref('photos/'+p.fbKey).update({used:true});});
+      toast('✅ Опубликовано в '+accName+'!','ok');
+      if(statusEl) statusEl.textContent='✅ Опубликовано в '+accName+'!';
+      renderPostLog();
+    } else {
+      var err = d.results?d.results.map(function(r){return r.name+': '+(r.error||'ok');}).join(', '):(d.error||'Ошибка');
+      toast('Ошибка: '+err,'err');
+      if(statusEl) statusEl.textContent='❌ '+err;
+      db.ref('posts').push({eventId:ev.fbKey,eventName:ev.name,channel:'instagram',bot:account,status:'failed',error:err,publishedAt:Date.now()});
+      renderPostLog();
+    }
+    if(btn){btn.textContent=origText;btn.disabled=false;}
+  }).catch(function(){
+    toast('Сервер недоступен — запустите server.py','err');
+    if(statusEl) statusEl.textContent='❌ Сервер недоступен';
+    if(btn){btn.textContent=origText;btn.disabled=false;}
+  });
 }
 
 </script>
