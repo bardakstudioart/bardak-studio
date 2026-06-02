@@ -25,9 +25,17 @@ function applySettings(){
   var tf=document.getElementById('s-tg-token');
   var cf=document.getElementById('s-tg-channel');
   var lf=document.getElementById('s-default-lang');
+  var bu=document.getElementById('s-backend-url');
+  var igf=document.getElementById('s-ig-token');
+  var igu=document.getElementById('s-ig-userid');
+  var imgf=document.getElementById('s-imgbb-key');
   if(tf)tf.value=settings.tgToken||'';
   if(cf)cf.value=settings.tgChannel||'';
   if(lf)lf.value=settings.defaultLang||'ru';
+  if(bu)bu.value=BACKEND_URL;
+  if(igf&&settings.igToken)igf.value=settings.igToken;
+  if(igu&&settings.igUserId)igu.value=settings.igUserId;
+  if(imgf&&settings.imgbbKey)imgf.value=settings.imgbbKey;
   updateToggleUI();
 }
 function saveSetting(key,inputId){
@@ -427,9 +435,17 @@ function applySettings(){
   var tf=document.getElementById('s-tg-token');
   var cf=document.getElementById('s-tg-channel');
   var lf=document.getElementById('s-default-lang');
+  var bu=document.getElementById('s-backend-url');
+  var igf=document.getElementById('s-ig-token');
+  var igu=document.getElementById('s-ig-userid');
+  var imgf=document.getElementById('s-imgbb-key');
   if(tf)tf.value=settings.tgToken||'';
   if(cf)cf.value=settings.tgChannel||'';
   if(lf)lf.value=settings.defaultLang||'ru';
+  if(bu)bu.value=BACKEND_URL;
+  if(igf&&settings.igToken)igf.value=settings.igToken;
+  if(igu&&settings.igUserId)igu.value=settings.igUserId;
+  if(imgf&&settings.imgbbKey)imgf.value=settings.imgbbKey;
   updateToggleUI();
 }
 function saveSetting(key,inputId){
@@ -824,9 +840,17 @@ function applySettings(){
   var tf=document.getElementById('s-tg-token');
   var cf=document.getElementById('s-tg-channel');
   var lf=document.getElementById('s-default-lang');
+  var bu=document.getElementById('s-backend-url');
+  var igf=document.getElementById('s-ig-token');
+  var igu=document.getElementById('s-ig-userid');
+  var imgf=document.getElementById('s-imgbb-key');
   if(tf)tf.value=settings.tgToken||'';
   if(cf)cf.value=settings.tgChannel||'';
   if(lf)lf.value=settings.defaultLang||'ru';
+  if(bu)bu.value=BACKEND_URL;
+  if(igf&&settings.igToken)igf.value=settings.igToken;
+  if(igu&&settings.igUserId)igu.value=settings.igUserId;
+  if(imgf&&settings.imgbbKey)imgf.value=settings.imgbbKey;
   updateToggleUI();
 }
 function saveSetting(key,inputId){
@@ -1221,9 +1245,17 @@ function applySettings(){
   var tf=document.getElementById('s-tg-token');
   var cf=document.getElementById('s-tg-channel');
   var lf=document.getElementById('s-default-lang');
+  var bu=document.getElementById('s-backend-url');
+  var igf=document.getElementById('s-ig-token');
+  var igu=document.getElementById('s-ig-userid');
+  var imgf=document.getElementById('s-imgbb-key');
   if(tf)tf.value=settings.tgToken||'';
   if(cf)cf.value=settings.tgChannel||'';
   if(lf)lf.value=settings.defaultLang||'ru';
+  if(bu)bu.value=BACKEND_URL;
+  if(igf&&settings.igToken)igf.value=settings.igToken;
+  if(igu&&settings.igUserId)igu.value=settings.igUserId;
+  if(imgf&&settings.imgbbKey)imgf.value=settings.imgbbKey;
   updateToggleUI();
 }
 function saveSetting(key,inputId){
@@ -1618,9 +1650,17 @@ function applySettings(){
   var tf=document.getElementById('s-tg-token');
   var cf=document.getElementById('s-tg-channel');
   var lf=document.getElementById('s-default-lang');
+  var bu=document.getElementById('s-backend-url');
+  var igf=document.getElementById('s-ig-token');
+  var igu=document.getElementById('s-ig-userid');
+  var imgf=document.getElementById('s-imgbb-key');
   if(tf)tf.value=settings.tgToken||'';
   if(cf)cf.value=settings.tgChannel||'';
   if(lf)lf.value=settings.defaultLang||'ru';
+  if(bu)bu.value=BACKEND_URL;
+  if(igf&&settings.igToken)igf.value=settings.igToken;
+  if(igu&&settings.igUserId)igu.value=settings.igUserId;
+  if(imgf&&settings.imgbbKey)imgf.value=settings.imgbbKey;
   updateToggleUI();
 }
 function saveSetting(key,inputId){
@@ -3349,9 +3389,17 @@ function applySettings(){
   var tf=document.getElementById('s-tg-token');
   var cf=document.getElementById('s-tg-channel');
   var lf=document.getElementById('s-default-lang');
+  var bu=document.getElementById('s-backend-url');
+  var igf=document.getElementById('s-ig-token');
+  var igu=document.getElementById('s-ig-userid');
+  var imgf=document.getElementById('s-imgbb-key');
   if(tf)tf.value=settings.tgToken||'';
   if(cf)cf.value=settings.tgChannel||'';
   if(lf)lf.value=settings.defaultLang||'ru';
+  if(bu)bu.value=BACKEND_URL;
+  if(igf&&settings.igToken)igf.value=settings.igToken;
+  if(igu&&settings.igUserId)igu.value=settings.igUserId;
+  if(imgf&&settings.imgbbKey)imgf.value=settings.imgbbKey;
   updateToggleUI();
 }
 function saveSetting(key,inputId){
@@ -4131,12 +4179,12 @@ function publishViaBackend(botKey){
 // ===== INSTAGRAM PUBLISH =====
 function saveIgToken(account){
   var tokenEl = document.getElementById(account==='bardak'?'s-ig-token':'s-ig-sm-token');
-  var userEl = document.getElementById(account==='bardak'?'s-ig-userid':'s-ig-sm-userid');
   if(!tokenEl || !tokenEl.value.trim()){toast('Вставьте токен','err');return;}
+  var token = tokenEl.value.trim();
   var key = account==='bardak'?'igToken':'smIgToken';
-  settings[key] = tokenEl.value.trim();
-  db.ref('settings/'+key).set(settings[key]);
-  toast('Токен сохранён','ok');
+  settings[key] = token;
+  db.ref('settings/'+key).set(token);
+  toast('✅ Токен сохранён','ok');
 }
 
 function getIgUserId(account){
@@ -4157,17 +4205,50 @@ function getIgUserId(account){
       var key = account==='bardak'?'igUserId':'smIgUserId';
       settings[key] = d.id;
       db.ref('settings/'+key).set(d.id);
-      if(resultEl) resultEl.textContent = '✅ @'+d.username+' ('+d.account_type+')';
+      if(resultEl) resultEl.textContent = '✅ @'+(d.username||d.id)+' ('+(d.account_type||'ok')+')';
       if(resultEl) resultEl.style.color='var(--k)';
       toast('ID получен: '+d.id,'ok');
     } else {
-      if(resultEl) resultEl.textContent = '❌ '+(d.error||JSON.stringify(d));
+      var errMsg = d.error ? (typeof d.error === 'object' ? d.error.message : d.error) : JSON.stringify(d);
+      if(resultEl) resultEl.textContent = '❌ '+errMsg;
       if(resultEl) resultEl.style.color='var(--danger)';
     }
-  }).catch(function(){toast('Сервер недоступен','err');});
+  }).catch(function(e){toast('Сервер недоступен: '+e.message,'err');});
 }
 
-function checkIgProfile(){getIgUserId('bardak');}
+function checkIgProfile(){
+  var tokenEl = document.getElementById('s-ig-token');
+  var token = tokenEl ? tokenEl.value.trim() : '';
+  if(!token){toast('Вставьте токен в поле Access Token','err');return;}
+  var resultEl = document.getElementById('ig-check-result');
+  if(resultEl){resultEl.textContent='Проверяю...';resultEl.style.color='var(--muted)';}
+  fetch(BACKEND_URL+'/ig/profile',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({token:token})
+  }).then(function(r){return r.json();})
+  .then(function(d){
+    console.log('IG profile response:', JSON.stringify(d));
+    if(d.id){
+      var userEl = document.getElementById('s-ig-userid');
+      if(userEl) userEl.value = d.id;
+      settings['igUserId'] = d.id;
+      db.ref('settings/igUserId').set(d.id);
+      if(resultEl){resultEl.textContent='✅ @'+(d.username||d.id);resultEl.style.color='var(--k)';}
+      toast('✅ Профиль найден: @'+(d.username||d.id),'ok');
+    } else {
+      var msg = '';
+      if(d.error && typeof d.error === 'object') msg = d.error.message || JSON.stringify(d.error);
+      else if(d.error) msg = String(d.error);
+      else msg = JSON.stringify(d);
+      if(resultEl){resultEl.textContent='❌ '+msg;resultEl.style.color='var(--danger)';}
+      toast('Ошибка: '+msg,'err');
+    }
+  }).catch(function(e){
+    if(resultEl){resultEl.textContent='❌ Сервер недоступен';resultEl.style.color='var(--danger)';}
+    toast('Сервер недоступен','err');
+  });
+}
 
 function publishViaInstagram(account){
   var ev = selectedEventForPublish;
@@ -4186,10 +4267,12 @@ function publishViaInstagram(account){
 
   var photoData = selectedPhotos.map(function(p){return p.url;});
 
+  var igToken = account==='bardak'?settings.igToken:settings.smIgToken;
+  var igUserId = account==='bardak'?settings.igUserId:settings.smIgUserId;
   fetch(BACKEND_URL+'/publish/instagram',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({account:account, text:text, photos:photoData})
+    body:JSON.stringify({account:account, text:text, photos:photoData, token:igToken, user_id:igUserId})
   }).then(function(r){return r.json();})
   .then(function(d){
     if(d.ok){
