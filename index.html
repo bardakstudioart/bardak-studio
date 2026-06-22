@@ -2248,6 +2248,26 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
 .toggle.on{background:var(--k)}
 .toggle::after{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:white;top:3px;left:3px;transition:left .2s}
 .toggle.on::after{left:23px}
+
+/* EXPENSES */
+.exp-type-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;display:inline-block;white-space:nowrap}
+.exp-type-rent{background:#E6F1FB;color:#185FA5}
+.exp-type-transport{background:#FAEEDA;color:#854F0B}
+.exp-type-materials{background:var(--kl);color:var(--k2)}
+.exp-type-general{background:#F1EFE8;color:#5F5E5A}
+.exp-type-packaging{background:var(--ml);color:var(--m2)}
+.exp-type-other{background:#FCEBEB;color:#E24B4A}
+.exp-row{display:flex;align-items:center;gap:10px;padding:.7rem 1.25rem;border-bottom:1px solid var(--border);font-size:13px;flex-wrap:wrap}
+.exp-row:last-child{border-bottom:none}
+.exp-row:hover{background:#FAFAF8}
+.exp-name{flex:1;font-weight:600;min-width:120px}
+.exp-amt{font-family:'Unbounded',sans-serif;font-size:.85rem;font-weight:600;color:var(--danger)}
+.profit-card{border-radius:var(--r);padding:1.1rem 1.25rem;text-align:center}
+.profit-card.positive{background:#E1F5EE;border:1px solid var(--k)}
+.profit-card.negative{background:#FCEBEB;border:1px solid var(--danger)}
+.profit-val{font-family:'Unbounded',sans-serif;font-size:1.4rem;font-weight:700}
+.profit-val.pos{color:var(--k2)}
+.profit-val.neg{color:var(--danger)}
 </style>
 </head>
 <body>
@@ -2295,6 +2315,7 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
       <button class="tab" onclick="goTab('events',this)">📅 Ивенты</button>
       <button class="tab" onclick="goTab('catalog',this)">🏷 Каталог</button>
       <button class="tab" onclick="goTab('inventory',this)">📦 Склад</button>
+      <button class="tab" onclick="goTab('expenses',this)">💸 Расходы</button>
       <button class="tab" onclick="goTab('publish',this)">📸 Публикации</button>
       <button class="tab" onclick="goTab('settings',this)">⚙️ Настройки</button>
     </nav>
@@ -2416,6 +2437,14 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
     <button class="period-btn" onclick="setPeriod('month',this)">Месяц</button>
     <button class="period-btn" onclick="setPeriod('year',this)">Год</button>
     <button class="period-btn" onclick="setPeriod('all',this)">Всё время</button>
+    <button class="period-btn" id="period-btn-custom" onclick="setPeriod('custom',this)">📅 Даты</button>
+  </div>
+  <div id="custom-date-range" style="display:none;margin-top:10px;display:none;gap:10px;align-items:center;flex-wrap:wrap">
+    <span style="font-size:13px;font-weight:700;color:var(--muted)">С:</span>
+    <input class="fi" type="date" id="date-from" onchange="renderAnalytics()" style="width:140px">
+    <span style="font-size:13px;font-weight:700;color:var(--muted)">По:</span>
+    <input class="fi" type="date" id="date-to" onchange="renderAnalytics()" style="width:140px">
+    <button class="btn sm grn" onclick="renderAnalytics()">Применить</button>
   </div>
   <div id="analytics-content"></div>
 </div>
@@ -2462,6 +2491,14 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
           <option value="katya">Bardak Studio</option>
           <option value="masha">SealMary</option>
         </select>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">Фото</div>
+        <label class="btn sm" style="cursor:pointer;border-style:dashed">
+          📷 Выбрать
+          <input type="file" id="new-photo" accept="image/*" style="display:none">
+        </label>
+        <span id="new-photo-name" style="font-size:11px;color:var(--muted);margin-left:6px"></span>
       </div>
       <button class="btn pri" onclick="addProduct()">+ Добавить</button>
     </div>
@@ -2688,6 +2725,73 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
       <input class="setting-input" id="s-ig-sm-userid" placeholder="Получить автоматически →">
       <button class="btn sm" onclick="getIgUserId('sealmary')">🔍 Получить ID</button>
     </div>
+  </div>
+</div>
+
+
+<!-- EXPENSES -->
+<div id="pg-expenses" class="pg">
+  <!-- Add expense form -->
+  <div class="card">
+    <div class="card-hd"><h3>Добавить расход</h3></div>
+    <div style="padding:1rem 1.25rem;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">Название</div>
+        <input class="fi" id="exp-name" placeholder="Аренда стола..." style="width:180px">
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">Сумма ₩</div>
+        <input class="fi" id="exp-amount" type="number" placeholder="50000" min="0" step="1000" style="width:110px">
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">Тип</div>
+        <select class="fi" id="exp-type">
+          <option value="rent">🏪 Аренда стола</option>
+          <option value="transport">🚗 Транспорт</option>
+          <option value="materials">🎨 Материалы</option>
+          <option value="packaging">📦 Упаковка</option>
+          <option value="general">🌐 Общие</option>
+          <option value="other">🔧 Прочее</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">Кто платил</div>
+        <select class="fi" id="exp-owner">
+          <option value="bardak">🎨 Bardak Studio</option>
+          <option value="sealmary">🦭 SealMary</option>
+          <option value="shared">👥 Общий (50/50)</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">Дата</div>
+        <input class="fi" id="exp-date" type="date" style="width:140px">
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">Ивент (опц.)</div>
+        <select class="fi" id="exp-event" style="width:160px">
+          <option value="">— без ивента —</option>
+        </select>
+      </div>
+      <button class="btn pri" onclick="addExpense()">+ Добавить</button>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="stats" id="exp-stats"></div>
+
+  <!-- Filters -->
+  <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
+    <span style="font-size:12px;font-weight:700;color:var(--muted)">Фильтр:</span>
+    <button class="btn sm" id="ef-all" onclick="filterExp('all')" style="background:var(--text);color:#fff;border-color:var(--text)">Все</button>
+    <button class="btn sm bdg k" id="ef-bardak" onclick="filterExp('bardak')">Bardak Studio</button>
+    <button class="btn sm bdg m" id="ef-sealmary" onclick="filterExp('sealmary')">SealMary</button>
+    <button class="btn sm" id="ef-shared" onclick="filterExp('shared')" style="background:#F1EFE8;color:#5F5E5A;border-color:#ddd">Общие</button>
+  </div>
+
+  <!-- Expenses list -->
+  <div class="card">
+    <div class="card-hd"><h3>История расходов</h3><button class="btn sm" onclick="exportExpensesCSV()">📥 CSV</button></div>
+    <div id="exp-list" style="max-height:500px;overflow-y:auto"><div class="empty">Нет расходов</div></div>
   </div>
 </div>
 
@@ -3467,7 +3571,11 @@ function compressImage(file, maxWidth, quality, callback){
     img.onload=function(){
       var canvas=document.createElement('canvas');
       var w=img.width, h=img.height;
+      // Telegram requires min 320px on shortest side
+      var minSize=320;
       if(w>maxWidth){h=Math.round(h*maxWidth/w);w=maxWidth;}
+      if(w<minSize){h=Math.round(h*minSize/w);w=minSize;}
+      if(h<minSize){w=Math.round(w*minSize/h);h=minSize;}
       canvas.width=w; canvas.height=h;
       var ctx=canvas.getContext('2d');
       ctx.drawImage(img,0,0,w,h);
@@ -3486,7 +3594,7 @@ function uploadPhotos(input){
   var count=0;
   files.forEach(function(file){
     // Compress to max 1200px width, 75% quality (~100-200KB)
-    compressImage(file, 800, 0.6, function(compressed){
+    compressImage(file, 1280, 0.85, function(compressed){
       var photoData={
         url:compressed,
         name:file.name,
@@ -4309,6 +4417,403 @@ function publishViaInstagram(account){
     if(btn){btn.textContent=origText;btn.disabled=false;}
   });
 }
+
+
+// ===== EXPENSES MODULE =====
+var expenses = [];
+var expFilter = 'all';
+
+var EXP_TYPES = {
+  rent: {label:'Аренда стола', cls:'rent'},
+  transport: {label:'Транспорт', cls:'transport'},
+  materials: {label:'Материалы', cls:'materials'},
+  packaging: {label:'Упаковка', cls:'packaging'},
+  general: {label:'Общие', cls:'general'},
+  other: {label:'Прочее', cls:'other'}
+};
+
+// Firebase listener for expenses
+db.ref && (function(){
+  // Will be called after auth
+})();
+
+function startExpensesListener(){
+  db.ref('expenses').on('value', function(snap){
+    expenses = [];
+    snap.forEach(function(c){ expenses.push(Object.assign({fbKey:c.key}, c.val())); });
+    expenses.sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
+    renderExpenses();
+    renderExpStats();
+    renderAnalytics(); // update analytics with expenses
+  });
+}
+
+function addExpense(){
+  var name = document.getElementById('exp-name').value.trim();
+  var amount = parseFloat(document.getElementById('exp-amount').value)||0;
+  var type = document.getElementById('exp-type').value;
+  var owner = document.getElementById('exp-owner').value;
+  var date = document.getElementById('exp-date').value;
+  var eventId = document.getElementById('exp-event').value;
+
+  if(!name){toast('Введите название расхода','err');return;}
+  if(!amount){toast('Введите сумму','err');return;}
+  if(!date){toast('Выберите дату','err');return;}
+
+  var eventName = '';
+  if(eventId){
+    var ev = events.find(function(e){return e.fbKey===eventId;});
+    if(ev) eventName = ev.name;
+  }
+
+  db.ref('expenses').push({
+    name: name,
+    amount: amount,
+    type: type,
+    owner: owner,
+    date: date,
+    ts: Date.now(),
+    eventId: eventId||null,
+    eventName: eventName||null
+  });
+
+  document.getElementById('exp-name').value = '';
+  document.getElementById('exp-amount').value = '';
+  document.getElementById('exp-event').value = '';
+  toast('Расход добавлен','ok');
+}
+
+function deleteExpense(fbKey){
+  if(!confirm('Удалить расход?'))return;
+  db.ref('expenses/'+fbKey).remove();
+  toast('Расход удалён');
+}
+
+function filterExp(f){
+  expFilter = f;
+  ['all','bardak','sealmary','shared'].forEach(function(k){
+    var el = document.getElementById('ef-'+k);
+    if(el) el.style.opacity = k===f?'1':'0.45';
+  });
+  renderExpenses();
+}
+
+function getFilteredExpenses(){
+  if(expFilter==='all') return expenses;
+  return expenses.filter(function(e){ return e.owner===expFilter; });
+}
+
+function renderExpStats(){
+  var total=0, bardak=0, sealmary=0;
+  expenses.forEach(function(e){
+    total+=e.amount;
+    if(e.owner==='bardak') bardak+=e.amount;
+    else if(e.owner==='sealmary') sealmary+=e.amount;
+    else { bardak+=e.amount/2; sealmary+=e.amount/2; } // shared
+  });
+  var el = document.getElementById('exp-stats');
+  if(!el)return;
+  el.innerHTML =
+    '<div class="stat"><div class="slbl">Всего расходов</div><div class="sval" style="color:var(--danger)">'+fmt(total)+'</div></div>'+
+    '<div class="stat"><div class="slbl">Bardak Studio</div><div class="sval" style="color:var(--danger)">'+fmt(bardak)+'</div></div>'+
+    '<div class="stat"><div class="slbl">SealMary</div><div class="sval" style="color:var(--danger)">'+fmt(sealmary)+'</div></div>';
+}
+
+function renderExpenses(){
+  var list = getFilteredExpenses();
+  var el = document.getElementById('exp-list');
+  if(!el)return;
+
+  // Update event select
+  var evSel = document.getElementById('exp-event');
+  if(evSel){
+    var cur = evSel.value;
+    evSel.innerHTML = '<option value="">— без ивента —</option>';
+    events.forEach(function(ev){
+      var opt = document.createElement('option');
+      opt.value = ev.fbKey;
+      opt.textContent = ev.name;
+      if(ev.fbKey===cur) opt.selected=true;
+      evSel.appendChild(opt);
+    });
+  }
+
+  if(!list.length){el.innerHTML='<div class="empty">Нет расходов</div>';return;}
+  el.innerHTML = '';
+  list.forEach(function(e){
+    var typeInfo = EXP_TYPES[e.type]||{label:e.type,cls:'other'};
+    var ownerLbl = e.owner==='bardak'?'Bardak Studio':e.owner==='sealmary'?'SealMary':'Общий (50/50)';
+    var ownerCls = e.owner==='bardak'?'k':e.owner==='sealmary'?'m':'';
+    var row = document.createElement('div');
+    row.className = 'exp-row';
+    row.innerHTML =
+      '<span class="exp-type-badge exp-type-'+typeInfo.cls+'">'+typeInfo.label+'</span>'+
+      '<span class="exp-name">'+e.name+(e.eventName?' <span style="font-size:10px;color:var(--muted)">• '+e.eventName+'</span>':'')+'</span>'+
+      '<span class="bdg '+ownerCls+'" style="font-size:10px">'+ownerLbl+'</span>'+
+      '<span style="font-size:12px;color:var(--muted)">'+e.date+'</span>'+
+      '<span class="exp-amt">−'+fmt(e.amount)+'</span>'+
+      '<button class="del-btn">✕</button>';
+    row.querySelector('.del-btn').onclick = function(){ deleteExpense(e.fbKey); };
+    el.appendChild(row);
+  });
+}
+
+function exportExpensesCSV(){
+  var csv = '\uFEFFДата,Название,Тип,Кто,Сумма,Ивент\n';
+  expenses.forEach(function(e){
+    var typeInfo = EXP_TYPES[e.type]||{label:e.type};
+    var ownerLabel = e.owner==='bardak'?'Bardak Studio':e.owner==='sealmary'?'SealMary':'Общий';
+    csv += e.date+',"'+e.name+'",'+typeInfo.label+','+ownerLabel+','+e.amount+','+(e.eventName||'')+' \n';
+  });
+  var a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download = 'expenses_'+new Date().toLocaleDateString('ru-RU').replace(/\./g,'-')+'.csv';
+  a.click();
+}
+
+// Override startListeners to include expenses
+var _origStartListeners2 = startListeners;
+startListeners = function(){
+  _origStartListeners2();
+  startExpensesListener();
+};
+
+// Override goTab to update event select on expenses tab
+var _origGoTab2 = goTab;
+goTab = function(name, btn){
+  _origGoTab2(name, btn);
+  if(name==='expenses'){
+    renderExpenses();
+    renderExpStats();
+    // Set today's date as default
+    var dateEl = document.getElementById('exp-date');
+    if(dateEl && !dateEl.value) dateEl.value = new Date().toISOString().slice(0,10);
+  }
+};
+
+// ===== UPDATE ANALYTICS WITH PROFIT =====
+var _origRenderAnalytics = renderAnalytics;
+renderAnalytics = function(){
+  _origRenderAnalytics();
+
+  // Add profit section after existing analytics
+  var list = getFilteredSales(currentPeriod);
+  var startDate = null, endDate = null;
+  var now = new Date();
+  if(currentPeriod==='day'){startDate=new Date(now.getFullYear(),now.getMonth(),now.getDate());}
+  else if(currentPeriod==='week'){startDate=new Date(now);startDate.setDate(now.getDate()-6);}
+  else if(currentPeriod==='month'){startDate=new Date(now.getFullYear(),now.getMonth(),1);}
+  else if(currentPeriod==='year'){startDate=new Date(now.getFullYear(),0,1);}
+
+  // Filter expenses by period
+  var filteredExp = expenses.filter(function(e){
+    if(!startDate) return true;
+    return new Date(e.date) >= startDate;
+  });
+
+  var totalExp=0, bardakExp=0, sealmaryExp=0;
+  filteredExp.forEach(function(e){
+    totalExp+=e.amount;
+    if(e.owner==='bardak') bardakExp+=e.amount;
+    else if(e.owner==='sealmary') sealmaryExp+=e.amount;
+    else { bardakExp+=e.amount/2; sealmaryExp+=e.amount/2; }
+  });
+
+  // Get revenue from sales
+  var totalRev=0, bardakRev=0, sealmaryRev=0;
+  list.forEach(function(s){
+    totalRev+=s.price;
+    if(s.owner==='katya') bardakRev+=s.price;
+    else sealmaryRev+=s.price;
+  });
+
+  var totalProfit = totalRev - totalExp;
+  var bardakProfit = bardakRev - bardakExp;
+  var sealmaryProfit = sealmaryRev - sealmaryExp;
+
+  var profitHtml = '<div style="margin-top:1rem">'
+    +'<div style="font-family:Unbounded,sans-serif;font-size:.8rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.75rem">💰 Чистая прибыль</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:1rem">'
+      +'<div class="profit-card '+(totalProfit>=0?'positive':'negative')+'">'
+        +'<div class="slbl">Общая прибыль</div>'
+        +'<div class="profit-val '+(totalProfit>=0?'pos':'neg')+'">'+(totalProfit>=0?'':'-')+fmt(Math.abs(totalProfit))+'</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:4px">'+fmt(totalRev)+' − '+fmt(totalExp)+'</div>'
+      +'</div>'
+      +'<div class="profit-card '+(bardakProfit>=0?'positive':'negative')+'">'
+        +'<div class="slbl">🎨 Bardak Studio</div>'
+        +'<div class="profit-val '+(bardakProfit>=0?'pos':'neg')+'">'+(bardakProfit>=0?'':'-')+fmt(Math.abs(bardakProfit))+'</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:4px">'+fmt(bardakRev)+' − '+fmt(bardakExp)+'</div>'
+      +'</div>'
+      +'<div class="profit-card '+(sealmaryProfit>=0?'positive':'negative')+'">'
+        +'<div class="slbl">🦭 SealMary</div>'
+        +'<div class="profit-val '+(sealmaryProfit>=0?'pos':'neg')+'">'+(sealmaryProfit>=0?'':'-')+fmt(Math.abs(sealmaryProfit))+'</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:4px">'+fmt(sealmaryRev)+' − '+fmt(sealmaryExp)+'</div>'
+      +'</div>'
+    +'</div>'
+    +'<div class="analytics-grid">'
+      +'<div class="a-card"><h4>📊 Расходы по типам</h4>'
+      +Object.keys(EXP_TYPES).map(function(k){
+        var total = filteredExp.filter(function(e){return e.type===k;}).reduce(function(a,e){return a+e.amount;},0);
+        if(!total) return '';
+        return '<div class="a-row"><span>'+EXP_TYPES[k].label+'</span><span class="a-val" style="color:var(--danger)">'+fmt(total)+'</span></div>';
+      }).join('')
+      +'</div>'
+      +'<div class="a-card"><h4>📈 Рентабельность</h4>'
+        +'<div class="a-row"><span>Выручка</span><span class="a-val">'+fmt(totalRev)+'</span></div>'
+        +'<div class="a-row"><span>Расходы</span><span class="a-val" style="color:var(--danger)">'+fmt(totalExp)+'</span></div>'
+        +'<div class="a-row"><span>Прибыль</span><span class="a-val '+(totalProfit>=0?'':'')+'">'+fmt(totalProfit)+'</span></div>'
+        +'<div class="a-row"><span>Маржа</span><span class="a-val">'+(totalRev>0?Math.round(totalProfit/totalRev*100):0)+'%</span></div>'
+      +'</div>'
+    +'</div>'
+  +'</div>';
+
+  var analyticsEl = document.getElementById('analytics-content');
+  if(analyticsEl) analyticsEl.innerHTML += profitHtml;
+};
+
+
+// ===== DATE RANGE ANALYTICS =====
+var customDateFrom = null;
+var customDateTo = null;
+
+var _origSetPeriod = setPeriod;
+setPeriod = function(p, btn){
+  _origSetPeriod(p, btn);
+  var dateRange = document.getElementById('custom-date-range');
+  if(dateRange){
+    dateRange.style.display = p==='custom' ? 'flex' : 'none';
+  }
+  if(p==='custom'){
+    var today = new Date().toISOString().slice(0,10);
+    var fromEl = document.getElementById('date-from');
+    var toEl = document.getElementById('date-to');
+    if(fromEl && !fromEl.value) fromEl.value = today;
+    if(toEl && !toEl.value) toEl.value = today;
+    renderAnalytics();
+  }
+};
+
+// Override getFilteredSales to support custom date range
+var _origGetFilteredSales = getFilteredSales;
+getFilteredSales = function(period){
+  if(period !== 'custom') return _origGetFilteredSales(period);
+  var fromEl = document.getElementById('date-from');
+  var toEl = document.getElementById('date-to');
+  if(!fromEl || !toEl) return sales;
+  var from = new Date(fromEl.value);
+  var to = new Date(toEl.value);
+  to.setHours(23,59,59,999); // end of day
+  return sales.filter(function(s){
+    var d = new Date(s.time||s.ts);
+    return d >= from && d <= to;
+  });
+};
+
+// ===== PRODUCT PHOTOS =====
+document.getElementById('new-photo') && document.getElementById('new-photo').addEventListener('change', function(){
+  var file = this.files[0];
+  if(file){
+    var nameEl = document.getElementById('new-photo-name');
+    if(nameEl) nameEl.textContent = file.name;
+  }
+});
+
+// Override addProduct to include photo
+var _origAddProduct = addProduct;
+addProduct = function(){
+  var name = document.getElementById('new-name').value.trim();
+  var price = parseFloat(document.getElementById('new-price').value)||0;
+  var owner = document.getElementById('new-owner').value;
+  if(!name) return;
+  var photoInput = document.getElementById('new-photo');
+  var file = photoInput && photoInput.files[0];
+
+  if(file){
+    // Compress and save with photo
+    compressImage(file, 600, 0.8, function(compressed){
+      var id = 'P'+String(Date.now()).slice(-6);
+      db.ref('products').push({id:id, name:name, price:price, owner:owner, brought:0, sold:0, photo:compressed});
+      document.getElementById('new-name').value = '';
+      document.getElementById('new-price').value = '';
+      photoInput.value = '';
+      var nameEl = document.getElementById('new-photo-name');
+      if(nameEl) nameEl.textContent = '';
+      toast('Товар добавлен','ok');
+    });
+  } else {
+    _origAddProduct();
+  }
+};
+
+// Override renderCatalog to show product photos
+// Override renderCatalog to show product photos
+var _origRenderCatalog = renderCatalog;
+renderCatalog = function(){
+  var grid = document.getElementById('cat-grid');
+  var list = catFilter==='all' ? products : products.filter(function(p){ return p.owner===catFilter; });
+  if(!list.length){
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1">Нет товаров</div>';
+    return;
+  }
+  grid.innerHTML = '';
+  list.forEach(function(p){
+    var key = (p.fbKey||p.id||'x').replace(/[^a-zA-Z0-9]/g,'_');
+    var div = document.createElement('div');
+    div.className = 'cat-card';
+    div.setAttribute('data-fbkey', p.fbKey||'');
+
+    var photoHtml = p.photo ?
+      '<div style="width:100%;height:120px;border-radius:8px;overflow:hidden;margin-bottom:.75rem;background:#f5f5f5"><img src="'+p.photo+'" style="width:100%;height:100%;object-fit:cover"></div>' : '';
+
+    div.innerHTML = photoHtml +
+      '<div class="cat-top">'+
+        '<div class="cat-info">'+
+          '<input class="cat-name-input" value="'+p.name+'" data-fbkey="'+p.fbKey+'">'+
+          '<div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">'+
+            '<span class="bdg '+(p.owner||'k')[0]+'">'+ownerLabel(p.owner)+'</span>'+
+            '<input class="cat-price-input" type="number" value="'+p.price+'" min="0" step="500" data-fbkey="'+p.fbKey+'">'+
+            '<span style="font-size:11px;color:var(--muted)">₩</span>'+
+          '</div>'+
+          '<div class="cat-code">'+p.id+'</div>'+
+        '</div>'+
+        '<div style="display:flex;flex-direction:column;gap:4px">'+
+          '<button class="btn ic photo-btn" title="Изменить фото" style="font-size:14px">🖼</button>'+
+          '<button class="btn ic del-btn" style="color:var(--muted)">✕</button>'+
+        '</div>'+
+      '</div>'+
+      '<div class="barcode-wrap"><canvas id="bc-'+key+'"></canvas></div>';
+
+    // Bind events
+    var nameInput = div.querySelector('.cat-name-input');
+    nameInput.onchange = function(){ updateName(p.fbKey, this.value); };
+
+    var priceInput = div.querySelector('.cat-price-input');
+    priceInput.onchange = function(){ updatePrice(p.fbKey, this.value); };
+
+    div.querySelector('.photo-btn').onclick = function(){
+      var input = document.createElement('input');
+      input.type = 'file'; input.accept = 'image/*';
+      input.onchange = function(){
+        if(input.files[0]){
+          compressImage(input.files[0], 600, 0.8, function(compressed){
+            db.ref('products/'+p.fbKey).update({photo:compressed});
+            toast('Фото обновлено','ok');
+          });
+        }
+      };
+      input.click();
+    };
+
+    div.querySelector('.del-btn').onclick = function(){ deleteProduct(p.fbKey); };
+
+    grid.appendChild(div);
+    (function(k,id){
+      setTimeout(function(){
+        try{JsBarcode('#bc-'+k,id,{format:'CODE128',width:1.6,height:48,displayValue:false,margin:4,background:'#ffffff',lineColor:'#1A1A1A'});}catch(e){}
+      },50);
+    })(key,p.id);
+  });
+};
 
 </script>
 </body>
