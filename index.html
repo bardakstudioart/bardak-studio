@@ -5054,7 +5054,7 @@ function renderOrders(){
       btn.onclick = function(){ updateOrderStatus(o.fbKey, btn.getAttribute('data-status')); };
     });
     card.querySelector('.del-btn').onclick = function(){ deleteOrder(o.fbKey); };
-    card.querySelector('[data-print]').onclick = function(){ printEnvelope(o); };
+    card.querySelector('[data-print]').onclick = function(){ openLabelDesigner(o); };
 
     el.appendChild(card);
   });
@@ -5161,26 +5161,60 @@ function printEnvelope(order){
   var div = document.createElement('div');
   div.className = 'settings-section';
   div.className = 'settings-section';
-  var sRows = [
-    {key:'senderName', id:'s-sender-name', lbl:'Имя', ph:'KROPOT EKATERINA'},
-    {key:'senderAddress', id:'s-sender-address', lbl:'Адрес', ph:'경기도 안산시...'},
-    {key:'senderPhone', id:'s-sender-phone', lbl:'Телефон', ph:'010-0000-0000'},
-    {key:'senderZip', id:'s-sender-zip', lbl:'Индекс', ph:'00000'},
-  ];
-  var html = '<h3>✉️ Данные отправителя (для конвертов)</h3>';
-  sRows.forEach(function(r){
-    html += '<div class="setting-row">'+
-      '<span class="setting-lbl">'+r.lbl+'</span>'+
-      '<input class="setting-input" id="'+r.id+'" placeholder="'+r.ph+'">'+
-      '<button class="btn sm grn" data-key="'+r.key+'" data-input="'+r.id+'">Сохранить</button>'+
+  var html =
+    '<h3>✉️ Данные отправителя (для наклеек)</h3>'+
+
+    '<div style="background:var(--kl);border-radius:9px;padding:.75rem;margin-bottom:.75rem">'+
+      '<div style="font-size:11px;font-weight:700;color:var(--k2);margin-bottom:8px">🎨 Bardak Studio</div>'+
+      '<div class="setting-row"><span class="setting-lbl">Имя</span>'+
+        '<input class="setting-input" id="s-sender-name" placeholder="KROPOT EKATERINA">'+
+        '<button class="btn sm grn" data-key="senderName" data-input="s-sender-name">Сохр.</button></div>'+
+      '<div class="setting-row"><span class="setting-lbl">Адрес</span>'+
+        '<input class="setting-input" id="s-sender-address" placeholder="우편번호, 시/도, 상세주소">'+
+        '<button class="btn sm grn" data-key="senderAddress" data-input="s-sender-address">Сохр.</button></div>'+
+      '<div class="setting-row"><span class="setting-lbl">Телефон</span>'+
+        '<input class="setting-input" id="s-sender-phone" placeholder="010-0000-0000">'+
+        '<button class="btn sm grn" data-key="senderPhone" data-input="s-sender-phone">Сохр.</button></div>'+
+    '</div>'+
+
+    '<div style="background:var(--ml);border-radius:9px;padding:.75rem">'+
+      '<div style="font-size:11px;font-weight:700;color:var(--m2);margin-bottom:8px">🦭 SealMary</div>'+
+      '<div class="setting-row"><span class="setting-lbl">Имя</span>'+
+        '<input class="setting-input" id="s-sm-sender-name" placeholder="Имя Маши">'+
+        '<button class="btn sm" style="background:var(--m);color:#fff;border-color:var(--m)" data-key="smSenderName" data-input="s-sm-sender-name">Сохр.</button></div>'+
+      '<div class="setting-row"><span class="setting-lbl">Адрес</span>'+
+        '<input class="setting-input" id="s-sm-sender-address" placeholder="우편번호, 시/도, 상세주소">'+
+        '<button class="btn sm" style="background:var(--m);color:#fff;border-color:var(--m)" data-key="smSenderAddress" data-input="s-sm-sender-address">Сохр.</button></div>'+
+      '<div class="setting-row"><span class="setting-lbl">Телефон</span>'+
+        '<input class="setting-input" id="s-sm-sender-phone" placeholder="010-0000-0000">'+
+        '<button class="btn sm" style="background:var(--m);color:#fff;border-color:var(--m)" data-key="smSenderPhone" data-input="s-sm-sender-phone">Сохр.</button></div>'+
     '</div>';
-  });
+
   div.innerHTML = html;
   div.querySelectorAll('button[data-key]').forEach(function(btn){
     btn.onclick = function(){ saveSetting(btn.getAttribute('data-key'), btn.getAttribute('data-input')); };
   });
   settingsSection.appendChild(div);
 })();
+
+
+// ===== LABEL DESIGNER INTEGRATION =====
+function openLabelDesigner(order){
+  var isSealmary = order.shop==='sealmary';
+  var sName = isSealmary ? (settings.smSenderName||'SealMary') : (settings.senderName||'KROPOT EKATERINA');
+  var sAddr = isSealmary ? (settings.smSenderAddress||'') : (settings.senderAddress||'');
+  var sPhone = isSealmary ? (settings.smSenderPhone||'') : (settings.senderPhone||'');
+  var senderText = sName + (sAddr?'\n'+sAddr:'') + (sPhone?'\n'+sPhone:'');
+  var data = {
+    name: order.name||'',
+    phone: order.phone||'',
+    address: order.address||'',
+    order: order.orderNum||'',
+    sender: senderText
+  };
+  sessionStorage.setItem('labelOrderData', JSON.stringify(data));
+  window.open('label-designer.html?order=1', '_blank');
+}
 
 </script>
 </body>

@@ -387,6 +387,22 @@ function loadTPL(input){
 
 applySize();
 initFields();
+
+// Load order data if opened from panel
+(function(){
+  var raw = sessionStorage.getItem('labelOrderData');
+  if(!raw) return;
+  try{
+    var d = JSON.parse(raw);
+    if(d.name) document.getElementById('pv-name').value = d.name;
+    if(d.phone) document.getElementById('pv-phone').value = d.phone;
+    if(d.address) document.getElementById('pv-address').value = d.address;
+    if(d.order) document.getElementById('pv-order').value = d.order;
+    if(d.sender) document.getElementById('pv-sender').value = d.sender;
+    sessionStorage.removeItem('labelOrderData');
+    renderOverlay();
+  }catch(e){}
+})();
 </script>
 </body>
 </html>
