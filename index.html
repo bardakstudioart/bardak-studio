@@ -2272,18 +2272,26 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
 /* ORDERS */
 .order-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:1rem 1.25rem;margin-bottom:.75rem;transition:border-color .2s}
 .order-card.new{border-left:4px solid var(--danger)}
-.order-card.processing{border-left:4px solid var(--gold)}
+.order-card.awaiting{border-left:4px solid var(--gold)}
+.order-card.confirmed{border-left:4px solid var(--k)}
+.order-card.processing{border-left:4px solid #185FA5}
 .order-card.ready{border-left:4px solid var(--k)}
 .order-card.shipped{border-left:4px solid var(--m)}
+.order-card.received{border-left:4px solid #aaa}
+.order-card.cancelled{border-left:4px solid #ddd}
 .order-card.done{border-left:4px solid #aaa}
 .order-hd{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:.75rem}
 .order-num{font-family:'Unbounded',sans-serif;font-size:.8rem;font-weight:700;color:var(--muted)}
 .order-name{font-weight:700;font-size:15px;flex:1}
 .order-status{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;border:none;cursor:pointer;white-space:nowrap}
 .order-status.new{background:#FCEBEB;color:var(--danger)}
-.order-status.processing{background:var(--goldl);color:#854F0B}
+.order-status.awaiting{background:var(--goldl);color:#854F0B}
+.order-status.confirmed{background:var(--kl);color:var(--k2)}
+.order-status.processing{background:#E6F1FB;color:#185FA5}
 .order-status.ready{background:var(--kl);color:var(--k2)}
 .order-status.shipped{background:var(--ml);color:var(--m2)}
+.order-status.received{background:#EAF3DE;color:#3B6D11}
+.order-status.cancelled{background:#F1EFE8;color:#5F5E5A}
 .order-status.done{background:#F1EFE8;color:#5F5E5A}
 .order-info{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;font-size:13px;margin-bottom:.75rem}
 .order-field{color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
@@ -2841,9 +2849,10 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
     <span style="font-size:12px;font-weight:700;color:var(--muted)">Статус:</span>
     <button class="btn sm" id="of-all" onclick="filterOrders('all')" style="background:var(--text);color:#fff;border-color:var(--text)">Все</button>
     <button class="btn sm" id="of-new" onclick="filterOrders('new')" style="background:#FCEBEB;color:var(--danger);border-color:var(--danger)">🔴 Новые</button>
-    <button class="btn sm" id="of-processing" onclick="filterOrders('processing')" style="background:var(--goldl);color:#854F0B;border-color:#FAC775">⚡ В работе</button>
-    <button class="btn sm" id="of-ready" onclick="filterOrders('ready')" style="background:var(--kl);color:var(--k2);border-color:var(--k)">✅ Готовы</button>
-    <button class="btn sm" id="of-shipped" onclick="filterOrders('shipped')" style="background:var(--ml);color:var(--m2);border-color:var(--m)">📦 Отправлены</button>
+    <button class="btn sm" id="of-awaiting" onclick="filterOrders('awaiting')" style="background:var(--goldl);color:#854F0B;border-color:#FAC775">⏳ Ожидают оплаты</button>
+    <button class="btn sm" id="of-confirmed" onclick="filterOrders('confirmed')" style="background:var(--kl);color:var(--k2);border-color:var(--k)">✅ Подтверждены</button>
+    <button class="btn sm" id="of-processing" onclick="filterOrders('processing')" style="background:#E6F1FB;color:#185FA5;border-color:#185FA5">⚡ В работе</button>
+    <button class="btn sm" id="of-shipped" onclick="filterOrders('shipped')" style="background:var(--ml);color:var(--m2);border-color:var(--m)">🚚 Отправлены</button>
     <div style="margin-left:auto;display:flex;gap:8px">
       <button class="btn sm bdg k" id="of-bardak" onclick="filterOrdersShop('bardak')">Bardak Studio</button>
       <button class="btn sm bdg m" id="of-sealmary" onclick="filterOrdersShop('sealmary')">SealMary</button>
@@ -4900,11 +4909,14 @@ var orderFilter = 'all';
 var orderShopFilter = 'all';
 
 var ORDER_STATUSES = {
-  new:        {label:'🔴 Новый',      cls:'new'},
-  processing: {label:'⚡ В работе',   cls:'processing'},
-  ready:      {label:'✅ Готов',      cls:'ready'},
-  shipped:    {label:'📦 Отправлен',  cls:'shipped'},
-  done:       {label:'🏁 Завершён',   cls:'done'}
+  new:        {label:'🔴 Новый',                cls:'new'},
+  awaiting:   {label:'⏳ Ожидает оплаты',       cls:'processing'},
+  confirmed:  {label:'✅ Оплата подтверждена',  cls:'ready'},
+  processing: {label:'⚡ В работе',             cls:'processing'},
+  ready:      {label:'📦 Готов к отправке',     cls:'ready'},
+  shipped:    {label:'🚚 Отправлен',            cls:'shipped'},
+  received:   {label:'🎉 Получен',              cls:'done'},
+  cancelled:  {label:'❌ Отменён',              cls:'done'}
 };
 
 function startOrdersListener(){
@@ -4924,16 +4936,19 @@ function renderOrdersStats(){
   var newOrders = orders.filter(function(o){ return o.status==='new'; }).length;
   var processing = orders.filter(function(o){ return o.status==='processing'; }).length;
   var ready = orders.filter(function(o){ return o.status==='ready'; }).length;
+  var awaiting = orders.filter(function(o){ return o.status==='awaiting'; }).length;
+  var confirmed = orders.filter(function(o){ return o.status==='confirmed'; }).length;
   el.innerHTML =
     '<div class="stat"><div class="slbl">Всего заказов</div><div class="sval">'+total+'</div></div>'+
     '<div class="stat"><div class="slbl">🔴 Новых</div><div class="sval" style="color:var(--danger)">'+newOrders+'</div></div>'+
-    '<div class="stat"><div class="slbl">⚡ В работе</div><div class="sval" style="color:var(--gold)">'+processing+'</div></div>'+
-    '<div class="stat"><div class="slbl">✅ Готово</div><div class="sval g">'+ready+'</div></div>';
+    '<div class="stat"><div class="slbl">⏳ Ожид. оплаты</div><div class="sval" style="color:var(--gold)">'+awaiting+'</div></div>'+
+    '<div class="stat"><div class="slbl">✅ Подтверждено</div><div class="sval g">'+confirmed+'</div></div>'+
+    '<div class="stat"><div class="slbl">⚡ В работе</div><div class="sval" style="color:#185FA5">'+processing+'</div></div>';
 }
 
 function filterOrders(status){
   orderFilter = status;
-  ['all','new','processing','ready','shipped'].forEach(function(s){
+  ['all','new','awaiting','confirmed','processing','shipped'].forEach(function(s){
     var el = document.getElementById('of-'+s);
     if(el) el.style.opacity = s===status?'1':'0.45';
   });
