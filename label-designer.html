@@ -220,7 +220,7 @@ function addCustom(){
 }
 
 // ── SELECTION ─────────────────────────────────────────
-function sel(id){
+function sel(id, skipRender){
   selId = id;
   renderList();
   var f = fields.find(function(x){return x.id===id;});
@@ -228,15 +228,23 @@ function sel(id){
   var pr = document.getElementById('props');
   pr.classList.remove('off');
   document.getElementById('p-sz').value  = f.sz;
-  document.getElementById('p-col').value = f.col;
+  // Fix short hex colors for color input
+  var col = f.col;
+  if(col && col.length === 4) col = '#'+col[1]+col[1]+col[2]+col[2]+col[3]+col[3];
+  document.getElementById('p-col').value = col;
   document.getElementById('p-wt').value  = f.wt;
   document.getElementById('p-fn').value  = f.fn;
   document.getElementById('p-pre').value = f.pre||'';
   ['left','center','right'].forEach(function(a){
     document.getElementById('al-'+a).classList.toggle('on', f.al===a);
   });
-  // Re-render to show selection highlight
-  renderOl();
+  if(!skipRender) renderOl();
+  else {
+    // Just update highlight classes without rebuilding
+    ol.querySelectorAll('.df').forEach(function(el){
+      el.classList.toggle('sel', el._fid === id);
+    });
+  }
 }
 
 function upd(){
@@ -285,6 +293,7 @@ function renderOl(){
   var data = getData();
   fields.forEach(function(f){
     var div = document.createElement('div');
+    div._fid = f.id;
     div.className = 'df' + (f.id===selId?' sel':'');
     div.style.left        = f.x + 'px';
     div.style.top         = f.y + 'px';
@@ -300,19 +309,21 @@ function renderOl(){
       if(e.button !== 0) return;
       e.preventDefault();
       e.stopPropagation();
-      sel(f.id);
 
-      // Capture starting positions
+      // Select without re-rendering overlay (keeps this div alive)
+      sel(f.id, true);
+
       var startX = e.clientX;
       var startY = e.clientY;
       var startFX = f.x;
       var startFY = f.y;
+      var moved = false;
 
       div.style.cursor = 'grabbing';
       document.body.style.userSelect = 'none';
 
       function onMove(e){
-        // Delta from where drag started
+        moved = true;
         var dx = e.clientX - startX;
         var dy = e.clientY - startY;
         f.x = Math.max(0, Math.min(cv.width  - 4, startFX + dx));
@@ -325,19 +336,21 @@ function renderOl(){
         div.style.cursor = 'move';
         document.body.style.userSelect = '';
         document.removeEventListener('mousemove', onMove);
-        document.removeEventListener('mouseup',   onUp);
+        document.removeEventListener('mouseup', onUp);
+        // Now safe to re-render since drag is done
+        renderOl();
         renderList();
       }
 
       document.addEventListener('mousemove', onMove);
-      document.addEventListener('mouseup',   onUp);
+      document.addEventListener('mouseup', onUp);
     });
 
     // Touch support
     div.addEventListener('touchstart', function(e){
       e.preventDefault();
       e.stopPropagation();
-      sel(f.id);
+      sel(f.id, true);
 
       var startX = e.touches[0].clientX;
       var startY = e.touches[0].clientY;
