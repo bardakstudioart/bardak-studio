@@ -200,15 +200,15 @@ function fieldText(f, data){
 function initFields(){
   var w = cv.width, h = cv.height;
   // Sender — top left
-  fields.push({id:++uid, key:'sender', label:'Отправитель',   def:'KROPOT EKATERINA', pre:'[보내는 사람]\n', x:12, y:12, sz:10, col:'#555', wt:'400', fn:'Nunito', al:'left'});
+  fields.push({id:++uid, key:'sender', label:'Отправитель',   def:'KROPOT EKATERINA', pre:'[보내는 사람]\n', x:12, y:12, sz:10, col:'#555555', wt:'400', fn:'Nunito', al:'left'});
   // Order num — top right
-  fields.push({id:++uid, key:'order',  label:'№ заказа',      def:'BS-000000',         pre:'',               x:w-90, y:12, sz:8,  col:'#aaa', wt:'400', fn:'Nunito', al:'left'});
+  fields.push({id:++uid, key:'order',  label:'№ заказа',      def:'BS-000000',         pre:'',               x:w-90, y:12, sz:8,  col:'#aaaaaa', wt:'400', fn:'Nunito', al:'left'});
   // Recipient label
   var rx=Math.round(w*0.42), ry=Math.round(h*0.40);
-  fields.push({id:++uid, key:null,     label:'Метка — получатель', def:'[받는 사람]',   pre:'',               x:rx, y:ry,    sz:9,  col:'#888', wt:'400', fn:'Nunito', al:'left'});
-  fields.push({id:++uid, key:'name',   label:'Имя получателя', def:'Иванова Мария',    pre:'',               x:rx, y:ry+18, sz:14, col:'#111', wt:'700', fn:'Nunito', al:'left'});
-  fields.push({id:++uid, key:'phone',  label:'Телефон',         def:'010-0000-0000',    pre:'',               x:rx, y:ry+38, sz:11, col:'#333', wt:'400', fn:'Nunito', al:'left'});
-  fields.push({id:++uid, key:'addr',   label:'Адрес',           def:'서울시 강남구...', pre:'',               x:rx, y:ry+56, sz:10, col:'#444', wt:'400', fn:'Nunito', al:'left'});
+  fields.push({id:++uid, key:null,     label:'Метка — получатель', def:'[받는 사람]',   pre:'',               x:rx, y:ry,    sz:9,  col:'#888888', wt:'400', fn:'Nunito', al:'left'});
+  fields.push({id:++uid, key:'name',   label:'Имя получателя', def:'Иванова Мария',    pre:'',               x:rx, y:ry+18, sz:14, col:'#111111', wt:'700', fn:'Nunito', al:'left'});
+  fields.push({id:++uid, key:'phone',  label:'Телефон',         def:'010-0000-0000',    pre:'',               x:rx, y:ry+38, sz:11, col:'#333333', wt:'400', fn:'Nunito', al:'left'});
+  fields.push({id:++uid, key:'addr',   label:'Адрес',           def:'서울시 강남구...', pre:'',               x:rx, y:ry+56, sz:10, col:'#444444', wt:'400', fn:'Nunito', al:'left'});
   renderList(); renderOl();
 }
 
@@ -302,19 +302,21 @@ function renderOl(){
       e.stopPropagation();
       sel(f.id);
 
-      var rect = div.getBoundingClientRect();
-      var olRect = ol.getBoundingClientRect();
-      var offX = e.clientX - rect.left;
-      var offY = e.clientY - rect.top;
+      // Capture starting positions
+      var startX = e.clientX;
+      var startY = e.clientY;
+      var startFX = f.x;
+      var startFY = f.y;
 
       div.style.cursor = 'grabbing';
       document.body.style.userSelect = 'none';
 
       function onMove(e){
-        var nx = e.clientX - olRect.left - offX;
-        var ny = e.clientY - olRect.top  - offY;
-        f.x = Math.max(0, Math.min(cv.width  - 4, nx));
-        f.y = Math.max(0, Math.min(cv.height - 4, ny));
+        // Delta from where drag started
+        var dx = e.clientX - startX;
+        var dy = e.clientY - startY;
+        f.x = Math.max(0, Math.min(cv.width  - 4, startFX + dx));
+        f.y = Math.max(0, Math.min(cv.height - 4, startFY + dy));
         div.style.left = f.x + 'px';
         div.style.top  = f.y + 'px';
       }
@@ -337,18 +339,17 @@ function renderOl(){
       e.stopPropagation();
       sel(f.id);
 
-      var rect = div.getBoundingClientRect();
-      var olRect = ol.getBoundingClientRect();
-      var offX = e.touches[0].clientX - rect.left;
-      var offY = e.touches[0].clientY - rect.top;
+      var startX = e.touches[0].clientX;
+      var startY = e.touches[0].clientY;
+      var startFX = f.x;
+      var startFY = f.y;
 
       function onMove(e){
         e.preventDefault();
-        var t = e.touches[0];
-        var nx = t.clientX - olRect.left - offX;
-        var ny = t.clientY - olRect.top  - offY;
-        f.x = Math.max(0, Math.min(cv.width  - 4, nx));
-        f.y = Math.max(0, Math.min(cv.height - 4, ny));
+        var dx = e.touches[0].clientX - startX;
+        var dy = e.touches[0].clientY - startY;
+        f.x = Math.max(0, Math.min(cv.width  - 4, startFX + dx));
+        f.y = Math.max(0, Math.min(cv.height - 4, startFY + dy));
         div.style.left = f.x + 'px';
         div.style.top  = f.y + 'px';
       }
