@@ -182,7 +182,8 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
         </div>
         <div class="field">
           <label>Адрес доставки <span class="required">*</span></label>
-          <input type="text" id="f-address" placeholder="Город, улица, дом, квартира, индекс">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:5px">우편번호부터 시작하여 정확한 주소를 입력해주세요 (индекс → город → улица → дом → квартира)</div>
+          <input type="text" id="f-address" placeholder="우편번호 (индекс), 시/도, 구/군, 동/읍, 상세주소 (кв./офис)">
           <div class="err" id="err-address">Введите адрес</div>
         </div>
         <div class="field">
