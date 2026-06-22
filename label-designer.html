@@ -8,7 +8,7 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--k:#1D9E75;--kl:#E1F5EE;--k2:#0F6E56;--bg:#EDEDEA;--surface:#fff;--border:rgba(0,0,0,0.1);--text:#1A1A1A;--muted:#888}
-body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font-size:13px;height:100vh;display:flex;flex-direction:column;overflow:hidden;user-select:none}
+body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font-size:13px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
 
 /* TOOLBAR */
 .tb{background:#1A1A1A;color:#fff;padding:.6rem 1rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0}
@@ -295,27 +295,20 @@ function renderOl(){
     div.style.textAlign   = f.al;
     div.textContent       = fieldText(f, data);
 
-    // ── DRAG (Pointer Events — smooth like Photoshop) ──
-    div.addEventListener('pointerdown', function(e){
+    // ── DRAG — mousedown + mousemove on document ──
+    div.addEventListener('mousedown', function(e){
       if(e.button !== 0) return;
       e.preventDefault();
       e.stopPropagation();
-
       sel(f.id);
-      div.setPointerCapture(e.pointerId);
 
-      // Remember where in the element we clicked
-      var rect   = div.getBoundingClientRect();
-      var offX   = e.clientX - rect.left;
-      var offY   = e.clientY - rect.top;
+      var rect = div.getBoundingClientRect();
       var olRect = ol.getBoundingClientRect();
+      var offX = e.clientX - rect.left;
+      var offY = e.clientY - rect.top;
 
       div.style.cursor = 'grabbing';
-      div.style.zIndex = 99;
-
-      div.addEventListener('pointermove', onMove);
-      div.addEventListener('pointerup',   onUp);
-      div.addEventListener('pointercancel', onUp);
+      document.body.style.userSelect = 'none';
 
       function onMove(e){
         var nx = e.clientX - olRect.left - offX;
@@ -328,13 +321,47 @@ function renderOl(){
 
       function onUp(){
         div.style.cursor = 'move';
-        div.style.zIndex = '';
-        div.removeEventListener('pointermove',   onMove);
-        div.removeEventListener('pointerup',     onUp);
-        div.removeEventListener('pointercancel', onUp);
-        renderList(); // update coordinate display
+        document.body.style.userSelect = '';
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup',   onUp);
+        renderList();
       }
+
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup',   onUp);
     });
+
+    // Touch support
+    div.addEventListener('touchstart', function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      sel(f.id);
+
+      var rect = div.getBoundingClientRect();
+      var olRect = ol.getBoundingClientRect();
+      var offX = e.touches[0].clientX - rect.left;
+      var offY = e.touches[0].clientY - rect.top;
+
+      function onMove(e){
+        e.preventDefault();
+        var t = e.touches[0];
+        var nx = t.clientX - olRect.left - offX;
+        var ny = t.clientY - olRect.top  - offY;
+        f.x = Math.max(0, Math.min(cv.width  - 4, nx));
+        f.y = Math.max(0, Math.min(cv.height - 4, ny));
+        div.style.left = f.x + 'px';
+        div.style.top  = f.y + 'px';
+      }
+
+      function onEnd(){
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend',  onEnd);
+        renderList();
+      }
+
+      document.addEventListener('touchmove', onMove, {passive:false});
+      document.addEventListener('touchend',  onEnd);
+    }, {passive:false});
 
     ol.appendChild(div);
   });
