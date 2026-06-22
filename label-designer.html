@@ -176,26 +176,53 @@ function loadBg(input){
 }
 
 function initFields(){
-  // Korean postal format: sender top-left, recipient bottom-right
   var w = Math.round((+document.getElementById('cw').value||150)*DPI);
   var h = Math.round((+document.getElementById('ch').value||100)*DPI);
 
-  // SENDER - top left
-  fields.push({id:++uid,key:'sender',label:'Отправитель (보내는 사람)',def:'KROPOT EKATERINA',
-    prefix:'[보내는 사람]\n',x:12,y:12,size:10,color:'#444444',weight:'400',font:'Nunito',align:'left'});
+  // SENDER - top left (multiline in one field)
+  fields.push({
+    id:++uid, key:'sender', label:'Отправитель (보내는 사람)',
+    def:'KROPOT EKATERINA', prefix:'[보내는 사람]\n',
+    x:12, y:12, size:10, color:'#555', weight:'400', font:'Nunito', align:'left'
+  });
 
-  // RECIPIENT - bottom right block
-  fields.push({id:++uid,key:'name',label:'Получатель — Имя',def:'Иванова Мария',
-    prefix:'[받는 사람]\n',x:Math.round(w*0.45),y:Math.round(h*0.45),size:14,color:'#1a1a1a',weight:'700',font:'Nunito',align:'left'});
+  // ORDER NUMBER - top right
+  fields.push({
+    id:++uid, key:'order', label:'№ заказа',
+    def:'BS-000000', prefix:'',
+    x:w-80, y:12, size:8, color:'#aaa', weight:'400', font:'Nunito', align:'left'
+  });
 
-  fields.push({id:++uid,key:'phone',label:'Получатель — Телефон',def:'010-0000-0000',
-    prefix:'',x:Math.round(w*0.45),y:Math.round(h*0.45)+22,size:11,color:'#333',weight:'400',font:'Nunito',align:'left'});
+  // RECIPIENT LABEL
+  var rx = Math.round(w*0.42);
+  var ry = Math.round(h*0.42);
 
-  fields.push({id:++uid,key:'address',label:'Получатель — Адрес',def:'서울시 강남구...',
-    prefix:'',x:Math.round(w*0.45),y:Math.round(h*0.45)+38,size:10,color:'#333',weight:'400',font:'Nunito',align:'left'});
+  fields.push({
+    id:++uid, key:null, label:'Получатель — метка',
+    def:'[받는 사람]', prefix:'',
+    x:rx, y:ry, size:9, color:'#888', weight:'400', font:'Nunito', align:'left'
+  });
 
-  fields.push({id:++uid,key:'order',label:'№ заказа',def:'BS-000000',
-    prefix:'',x:Math.round(w*0.75),y:10,size:8,color:'#aaa',weight:'400',font:'Nunito',align:'right'});
+  // RECIPIENT NAME - bigger, bold
+  fields.push({
+    id:++uid, key:'name', label:'Получатель — Имя',
+    def:'Иванова Мария', prefix:'',
+    x:rx, y:ry+16, size:14, color:'#1a1a1a', weight:'700', font:'Nunito', align:'left'
+  });
+
+  // RECIPIENT PHONE
+  fields.push({
+    id:++uid, key:'phone', label:'Получатель — Телефон',
+    def:'010-0000-0000', prefix:'',
+    x:rx, y:ry+36, size:11, color:'#333', weight:'400', font:'Nunito', align:'left'
+  });
+
+  // RECIPIENT ADDRESS
+  fields.push({
+    id:++uid, key:'address', label:'Получатель — Адрес',
+    def:'서울시 강남구 테헤란로 123', prefix:'',
+    x:rx, y:ry+54, size:10, color:'#444', weight:'400', font:'Nunito', align:'left'
+  });
 
   renderList(); renderOverlay();
 }
