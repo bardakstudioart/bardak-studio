@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Редактор наклейки — Bardak Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--k:#1D9E75;--kl:#E1F5EE;--k2:#0F6E56;--bg:#F0EFEB;--surface:#fff;--border:rgba(0,0,0,0.1);--text:#1A1A1A;--muted:#888}
+body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);font-size:13px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.toolbar{background:var(--text);color:#fff;padding:.65rem 1rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0}
+.logo{font-family:'Unbounded',sans-serif;font-size:.8rem;font-weight:700;white-space:nowrap}
+.logo span{color:#9FE1CB}
+.sep{width:1px;height:20px;background:rgba(255,255,255,0.2);flex-shrink:0}
+.btn{font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;padding:5px 12px;border-radius:7px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:#fff;cursor:pointer;white-space:nowrap}
+.btn:hover{background:rgba(255,255,255,0.15)}
+.btn.grn{background:var(--k);border-color:var(--k)}
+.size-row{display:flex;align-items:center;gap:5px;font-size:12px;color:rgba(255,255,255,0.7)}
+.size-row input{width:50px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:3px 6px;color:#fff;font-size:12px;font-family:Nunito,sans-serif}
+.workspace{flex:1;display:flex;overflow:hidden}
+.sidebar{width:240px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;padding:.75rem;display:flex;flex-direction:column;gap:.75rem}
+.sh{font-family:'Unbounded',sans-serif;font-size:.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.fi{font-family:'Nunito',sans-serif;font-size:12px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;width:100%;outline:none;background:#fff}
+.fi:focus{border-color:var(--k)}
+.fi-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.fld{background:var(--bg);border:1.5px solid var(--border);border-radius:7px;padding:.4rem .6rem;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:600;transition:all .15s}
+.fld:hover,.fld.on{border-color:var(--k);background:var(--kl);color:var(--k2)}
+.props{display:flex;flex-direction:column;gap:6px}
+.props.disabled{opacity:.45;pointer-events:none}
+.row2{display:flex;gap:6px}
+.row2 .fi{flex:1}
+canvas-area{flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:1.5rem;background:#d0cfc9}
+.canvas-wrap{flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:1.5rem;background:#c8c7c2}
+.canvas-outer{position:relative;box-shadow:0 6px 30px rgba(0,0,0,0.2);display:inline-block}
+#cv{display:block}
+.df{position:absolute;cursor:move;user-select:none;line-height:1.35;padding:1px 3px;border-radius:2px;white-space:pre-wrap}
+.df:hover{outline:1.5px dashed rgba(29,158,117,0.6)}
+.df.sel{outline:2px solid var(--k);background:rgba(29,158,117,0.06)}
+.align-row{display:flex;gap:4px}
+.align-row button{flex:1;font-size:14px;padding:4px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer}
+.align-row button:hover,.align-row button.on{background:var(--kl);border-color:var(--k)}
+input[type=color]{width:36px;height:28px;border-radius:5px;border:1px solid var(--border);cursor:pointer;padding:2px;flex-shrink:0}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="logo">Bardak <span>Studio</span> — Наклейка</div>
+  <div class="sep"></div>
+  <label class="btn">🖼 Фон <input type="file" accept="image/*" style="display:none" onchange="loadBg(this)"></label>
+  <div class="sep"></div>
+  <div class="size-row">
+    Ш: <input id="cw" type="number" value="150" min="50" max="500"> мм
+    В: <input id="ch" type="number" value="100" min="30" max="400"> мм
+    <button class="btn" onclick="applySize()">✓</button>
+  </div>
+  <div class="sep"></div>
+  <button class="btn" onclick="saveTPL()">💾 Шаблон</button>
+  <label class="btn">📂 Открыть <input type="file" accept=".json" style="display:none" onchange="loadTPL(this)"></label>
+  <button class="btn grn" onclick="doPrint()">🖨 Печать</button>
+</div>
+
+<div class="workspace">
+  <div class="sidebar">
+    <div>
+      <div class="sh" style="margin-bottom:6px">Поля</div>
+      <div id="flist" style="display:flex;flex-direction:column;gap:4px"></div>
+      <button class="btn" style="width:100%;margin-top:6px;color:var(--text);border-color:var(--border)" onclick="addCustom()">+ Своё поле</button>
+    </div>
+
+    <div>
+      <div class="sh" style="margin-bottom:6px">Свойства</div>
+      <div class="props disabled" id="props">
+        <div>
+          <div class="fi-lbl">Размер / Цвет / Жирный</div>
+          <div class="row2">
+            <input type="number" class="fi" id="p-size" value="12" min="6" max="72" style="width:55px;flex:none" oninput="upd()">
+            <input type="color" id="p-color" value="#1a1a1a" onchange="upd()">
+            <select class="fi" id="p-weight" onchange="upd()">
+              <option value="400">Normal</option>
+              <option value="700">Bold</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <div class="fi-lbl">Шрифт</div>
+          <select class="fi" id="p-font" onchange="upd()">
+            <option>Nunito</option><option>Arial</option><option>Georgia</option>
+            <option>Courier New</option><option>Unbounded</option>
+          </select>
+        </div>
+        <div>
+          <div class="fi-lbl">Выравнивание</div>
+          <div class="align-row">
+            <button onclick="setAlign('left')" title="Лево">⬅</button>
+            <button onclick="setAlign('center')" title="Центр">↔</button>
+            <button onclick="setAlign('right')" title="Право">➡</button>
+          </div>
+        </div>
+        <div>
+          <div class="fi-lbl">Префикс</div>
+          <input type="text" class="fi" id="p-prefix" placeholder="받는사람: " oninput="upd()">
+        </div>
+        <button class="btn" style="color:#E24B4A;border-color:#E24B4A;width:100%;background:#FCEBEB" onclick="delSel()">🗑 Удалить</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="sh" style="margin-bottom:6px">Предпросмотр данных</div>
+      <div class="fi-lbl">Имя</div>
+      <input class="fi" id="pv-name" value="Иванова Мария" oninput="renderOverlay()">
+      <div class="fi-lbl" style="margin-top:5px">Телефон</div>
+      <input class="fi" id="pv-phone" value="010-1234-5678" oninput="renderOverlay()">
+      <div class="fi-lbl" style="margin-top:5px">Адрес</div>
+      <textarea class="fi" id="pv-address" rows="2" style="resize:none;margin-top:0" oninput="renderOverlay()">서울시 강남구 테헤란로 123-45</textarea>
+      <div class="fi-lbl" style="margin-top:5px">№ заказа</div>
+      <input class="fi" id="pv-order" value="BS-123456" oninput="renderOverlay()">
+      <div class="fi-lbl" style="margin-top:5px">Отправитель</div>
+      <input class="fi" id="pv-sender" value="KROPOT EKATERINA" oninput="renderOverlay()">
+    </div>
+  </div>
+
+  <div class="canvas-wrap">
+    <div class="canvas-outer" id="outer">
+      <canvas id="cv"></canvas>
+      <div id="overlay" style="position:absolute;inset:0;overflow:hidden"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+var DPI = 3.78;
+var bgImg = null;
+var fields = [];
+var selId = null;
+var uid = 0;
+
+var DEFS = [
+  {key:'name',    label:'Получатель',  def:'Иванова Мария'},
+  {key:'phone',   label:'Телефон',     def:'010-0000-0000'},
+  {key:'address', label:'Адрес',       def:'서울시 강남구...'},
+  {key:'order',   label:'№ заказа',    def:'BS-000000'},
+  {key:'sender',  label:'Отправитель', def:'KROPOT EKATERINA'},
+];
+
+var cv = document.getElementById('cv');
+var outer = document.getElementById('outer');
+var overlay = document.getElementById('overlay');
+
+function applySize(){
+  var w = Math.round((+document.getElementById('cw').value||150)*DPI);
+  var h = Math.round((+document.getElementById('ch').value||100)*DPI);
+  cv.width=w; cv.height=h;
+  outer.style.width=w+'px'; outer.style.height=h+'px';
+  overlay.style.width=w+'px'; overlay.style.height=h+'px';
+  drawBg();
+}
+
+function drawBg(){
+  var ctx=cv.getContext('2d');
+  ctx.fillStyle='#fff';
+  ctx.fillRect(0,0,cv.width,cv.height);
+  if(bgImg) ctx.drawImage(bgImg,0,0,cv.width,cv.height);
+}
+
+function loadBg(input){
+  var f=input.files[0]; if(!f)return;
+  var r=new FileReader();
+  r.onload=function(e){
+    var img=new Image();
+    img.onload=function(){bgImg=img;drawBg();};
+    img.src=e.target.result;
+  };
+  r.readAsDataURL(f);
+}
+
+function initFields(){
+  // Korean postal format: sender top-left, recipient bottom-right
+  var w = Math.round((+document.getElementById('cw').value||150)*DPI);
+  var h = Math.round((+document.getElementById('ch').value||100)*DPI);
+
+  // SENDER - top left
+  fields.push({id:++uid,key:'sender',label:'Отправитель (보내는 사람)',def:'KROPOT EKATERINA',
+    prefix:'[보내는 사람]\n',x:12,y:12,size:10,color:'#444444',weight:'400',font:'Nunito',align:'left'});
+
+  // RECIPIENT - bottom right block
+  fields.push({id:++uid,key:'name',label:'Получатель — Имя',def:'Иванова Мария',
+    prefix:'[받는 사람]\n',x:Math.round(w*0.45),y:Math.round(h*0.45),size:14,color:'#1a1a1a',weight:'700',font:'Nunito',align:'left'});
+
+  fields.push({id:++uid,key:'phone',label:'Получатель — Телефон',def:'010-0000-0000',
+    prefix:'',x:Math.round(w*0.45),y:Math.round(h*0.45)+22,size:11,color:'#333',weight:'400',font:'Nunito',align:'left'});
+
+  fields.push({id:++uid,key:'address',label:'Получатель — Адрес',def:'서울시 강남구...',
+    prefix:'',x:Math.round(w*0.45),y:Math.round(h*0.45)+38,size:10,color:'#333',weight:'400',font:'Nunito',align:'left'});
+
+  fields.push({id:++uid,key:'order',label:'№ заказа',def:'BS-000000',
+    prefix:'',x:Math.round(w*0.75),y:10,size:8,color:'#aaa',weight:'400',font:'Nunito',align:'right'});
+
+  renderList(); renderOverlay();
+}
+
+function addCustom(){
+  var lbl=prompt('Название поля:'); if(!lbl)return;
+  var val=prompt('Текст:','Текст');
+  fields.push({id:++uid,key:null,label:lbl,def:val||lbl,
+    prefix:'',x:20,y:20,size:11,color:'#1a1a1a',weight:'400',font:'Nunito',align:'left'});
+  renderList(); renderOverlay();
+}
+
+function getData(){
+  return{
+    name:document.getElementById('pv-name').value,
+    phone:document.getElementById('pv-phone').value,
+    address:document.getElementById('pv-address').value,
+    order:document.getElementById('pv-order').value,
+    sender:document.getElementById('pv-sender').value,
+  };
+}
+
+function fieldText(f,data){
+  var v = f.key&&data[f.key]!=null ? data[f.key] : f.def;
+  return (f.prefix||'')+v;
+}
+
+function renderList(){
+  var el=document.getElementById('flist');
+  el.innerHTML='';
+  fields.forEach(function(f){
+    var d=document.createElement('div');
+    d.className='fld'+(f.id===selId?' on':'');
+    d.innerHTML='<span>'+f.label+'</span>';
+    d.onclick=function(){select(f.id);};
+    el.appendChild(d);
+  });
+}
+
+function select(id){
+  selId=id;
+  renderList(); renderOverlay();
+  var f=fields.find(function(x){return x.id===id;});
+  if(!f)return;
+  var pr=document.getElementById('props');
+  pr.classList.remove('disabled');
+  document.getElementById('p-size').value=f.size;
+  document.getElementById('p-color').value=f.color;
+  document.getElementById('p-weight').value=f.weight;
+  document.getElementById('p-font').value=f.font;
+  document.getElementById('p-prefix').value=f.prefix||'';
+}
+
+function upd(){
+  var f=fields.find(function(x){return x.id===selId;}); if(!f)return;
+  f.size=+document.getElementById('p-size').value||11;
+  f.color=document.getElementById('p-color').value;
+  f.weight=document.getElementById('p-weight').value;
+  f.font=document.getElementById('p-font').value;
+  f.prefix=document.getElementById('p-prefix').value;
+  renderOverlay();
+}
+
+function setAlign(a){
+  var f=fields.find(function(x){return x.id===selId;}); if(!f)return;
+  f.align=a; renderOverlay();
+}
+
+function delSel(){
+  if(!selId||!confirm('Удалить поле?'))return;
+  fields=fields.filter(function(x){return x.id!==selId;});
+  selId=null;
+  document.getElementById('props').classList.add('disabled');
+  renderList(); renderOverlay();
+}
+
+function renderOverlay(){
+  overlay.innerHTML='';
+  var data=getData();
+  fields.forEach(function(f){
+    var div=document.createElement('div');
+    div.className='df'+(f.id===selId?' sel':'');
+    div.style.cssText='left:'+f.x+'px;top:'+f.y+'px;font-size:'+f.size+'px;color:'+f.color+
+      ';font-weight:'+f.weight+';font-family:'+f.font+',sans-serif;text-align:'+f.align;
+    div.textContent=fieldText(f,data);
+
+    // Mouse drag
+    div.addEventListener('mousedown',function(e){
+      e.preventDefault(); select(f.id);
+      var ob=outer.getBoundingClientRect();
+      var ox=e.clientX-f.x, oy=e.clientY-f.y;
+      function mm(e){
+        f.x=Math.max(0,e.clientX-ob.left-ox+f.x-(e.clientX-e.clientX));
+        f.y=Math.max(0,e.clientY-ob.top-oy+f.y-(e.clientY-e.clientY));
+        f.x=Math.max(0,Math.min(cv.width-10,e.clientX-ob.left-10));
+        f.y=Math.max(0,Math.min(cv.height-10,e.clientY-ob.top-10));
+        div.style.left=f.x+'px'; div.style.top=f.y+'px';
+      }
+      function mu(){document.removeEventListener('mousemove',mm);document.removeEventListener('mouseup',mu);renderList();}
+      document.addEventListener('mousemove',mm); document.addEventListener('mouseup',mu);
+    });
+
+    // Touch drag
+    div.addEventListener('touchstart',function(e){
+      e.preventDefault(); select(f.id);
+      var ob=outer.getBoundingClientRect();
+      function tm(e){
+        var t=e.touches[0];
+        f.x=Math.max(0,Math.min(cv.width-10,t.clientX-ob.left-10));
+        f.y=Math.max(0,Math.min(cv.height-10,t.clientY-ob.top-10));
+        div.style.left=f.x+'px'; div.style.top=f.y+'px';
+      }
+      function te(){document.removeEventListener('touchmove',tm);document.removeEventListener('touchend',te);renderList();}
+      document.addEventListener('touchmove',tm,{passive:false}); document.addEventListener('touchend',te);
+    });
+
+    overlay.appendChild(div);
+  });
+}
+
+function doPrint(orderData){
+  var data = orderData || getData();
+  var pc=document.createElement('canvas');
+  pc.width=cv.width; pc.height=cv.height;
+  var ctx=pc.getContext('2d');
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,pc.width,pc.height);
+  if(bgImg) ctx.drawImage(bgImg,0,0,pc.width,pc.height);
+  fields.forEach(function(f){
+    ctx.save();
+    ctx.font=f.weight+' '+f.size+'px '+f.font+',sans-serif';
+    ctx.fillStyle=f.color;
+    ctx.textAlign=f.align||'left';
+    var txt=fieldText(f,data);
+    var lines=txt.split('\n');
+    var ax=f.align==='right'?f.x+200:f.align==='center'?f.x+100:f.x;
+    lines.forEach(function(line,i){
+      ctx.fillText(line, ax, f.y+f.size+i*(f.size*1.4));
+    });
+    ctx.restore();
+  });
+  var url=pc.toDataURL('image/png');
+  var win=window.open('','_blank');
+  win.document.write('<!DOCTYPE html><html><head><title>Наклейка</title>'+
+    '<style>@page{margin:0}body{margin:0}img{width:100%;display:block}'+
+    '@media print{body{margin:0}}</style></head><body>'+
+    '<img src="'+url+'">'+
+    '<script>window.onload=function(){window.print();}<\/script>'+
+    '</body></html>');
+  win.document.close();
+}
+
+// Expose for main panel
+window.printLabelForOrder = function(order){
+  doPrint({
+    name:order.name||'',
+    phone:order.phone||'',
+    address:order.address||'',
+    order:order.orderNum||'',
+    sender:document.getElementById('pv-sender').value||'KROPOT EKATERINA'
+  });
+};
+
+function saveTPL(){
+  var bgData=null;
+  if(bgImg){var t=document.createElement('canvas');t.width=cv.width;t.height=cv.height;t.getContext('2d').drawImage(bgImg,0,0);bgData=t.toDataURL();}
+  var tpl={fields:fields,cw:document.getElementById('cw').value,ch:document.getElementById('ch').value,bg:bgData};
+  var a=document.createElement('a');
+  a.href='data:application/json,'+encodeURIComponent(JSON.stringify(tpl));
+  a.download='label-template.json'; a.click();
+}
+
+function loadTPL(input){
+  var r=new FileReader();
+  r.onload=function(e){
+    try{
+      var t=JSON.parse(e.target.result);
+      fields=t.fields||[]; uid=fields.reduce(function(m,f){return Math.max(m,f.id||0);},0);
+      document.getElementById('cw').value=t.cw||150;
+      document.getElementById('ch').value=t.ch||100;
+      applySize();
+      if(t.bg){var img=new Image();img.onload=function(){bgImg=img;drawBg();};img.src=t.bg;}
+      selId=null;
+      document.getElementById('props').classList.add('disabled');
+      renderList(); renderOverlay();
+    }catch(err){alert('Ошибка загрузки шаблона');}
+  };
+  r.readAsText(input.files[0]);
+}
+
+applySize();
+initFields();
+</script>
+</body>
+</html>

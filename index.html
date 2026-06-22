@@ -4936,12 +4936,11 @@ function renderOrdersStats(){
   var newOrders = orders.filter(function(o){ return o.status==='new'; }).length;
   var processing = orders.filter(function(o){ return o.status==='processing'; }).length;
   var ready = orders.filter(function(o){ return o.status==='ready'; }).length;
-  var awaiting = orders.filter(function(o){ return o.status==='awaiting'; }).length;
+  var awaiting = orders.filter(function(o){ return o.status==='new' || o.status==='awaiting'; }).length;
   var confirmed = orders.filter(function(o){ return o.status==='confirmed'; }).length;
   el.innerHTML =
     '<div class="stat"><div class="slbl">Всего заказов</div><div class="sval">'+total+'</div></div>'+
-    '<div class="stat"><div class="slbl">🔴 Новых</div><div class="sval" style="color:var(--danger)">'+newOrders+'</div></div>'+
-    '<div class="stat"><div class="slbl">⏳ Ожид. оплаты</div><div class="sval" style="color:var(--gold)">'+awaiting+'</div></div>'+
+    '<div class="stat"><div class="slbl">⏳ Новые / Ожид. оплаты</div><div class="sval" style="color:var(--danger)">'+awaiting+'</div></div>'+
     '<div class="stat"><div class="slbl">✅ Подтверждено</div><div class="sval g">'+confirmed+'</div></div>'+
     '<div class="stat"><div class="slbl">⚡ В работе</div><div class="sval" style="color:#185FA5">'+processing+'</div></div>';
 }
