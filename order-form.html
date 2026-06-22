@@ -291,22 +291,35 @@ function renderCatalog(){
   }
   grid.innerHTML = '';
   list.forEach(function(p){
+    var avail = p.availability || 'available';
+    // Skip unavailable
+    if(avail === 'unavailable') return;
+
     var qty = cart[p.id] ? cart[p.id].qty : 0;
+    var isOrderable = avail === 'available' || avail === 'preorder';
+
+    var badge = '';
+    if(avail === 'coming_soon') badge = '<div style="position:absolute;top:8px;left:8px;background:#FAC775;color:#854F0B;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px">🔜 Скоро</div>';
+    if(avail === 'preorder') badge = '<div style="position:absolute;top:8px;left:8px;background:var(--ml);color:var(--m2);font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px">📋 Предзаказ</div>';
+
     var div = document.createElement('div');
     div.className = 'product-item';
+    if(avail === 'coming_soon') div.style.opacity = '0.7';
     div.innerHTML =
       '<div class="product-img">'+(p.photo?'<img src="'+p.photo+'" alt="'+p.name+'">':'🎨')+'</div>'+
+      badge+
       '<div class="product-info">'+
         '<div class="product-name">'+p.name+'</div>'+
         '<div class="product-price">'+fmt(p.price)+'</div>'+
+        (avail==='preorder'?'<div style="font-size:10px;color:var(--m2);font-weight:700;margin-top:2px">Предзаказ</div>':'')+
       '</div>'+
-      (qty>0?'<div class="qty-badge">'+qty+'</div>':'<button class="add-btn">+</button>');
+      (qty>0?'<div class="qty-badge">'+qty+'</div>':(isOrderable?'<button class="add-btn">+</button>':''));
 
-    if(qty>0){
-      div.style.borderColor = 'var(--k)';
+    if(qty>0) div.style.borderColor = 'var(--k)';
+
+    if(isOrderable){
+      div.onclick = function(){ addToCart(p); };
     }
-
-    div.onclick = function(){ addToCart(p); };
     grid.appendChild(div);
   });
 }
@@ -404,6 +417,7 @@ function submitOrder(){
   var orderNum = 'BS-' + Date.now().toString().slice(-6);
   var productStr = items.map(function(i){ return i.product.name+(i.qty>1?' x'+i.qty:''); }).join(', ');
 
+  var hasPreorder = items.some(function(i){ return i.product.availability==='preorder'; });
   currentOrder = {
     orderNum: orderNum,
     name: name, phone: phone, email: email,
@@ -413,6 +427,7 @@ function submitOrder(){
     shop: 'bardak',
     status: 'new',
     paymentStatus: 'pending',
+    orderType: hasPreorder ? 'preorder' : 'regular',
     ts: Date.now(),
     createdAt: new Date().toISOString()
   };

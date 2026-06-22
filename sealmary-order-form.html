@@ -13,113 +13,233 @@
   --k:#7F77DD;--kl:#EEEDFE;--k2:#3C3489;
   --bg:#F7F5F0;--surface:#fff;--border:rgba(0,0,0,0.09);
   --text:#1A1A1A;--muted:#888;--danger:#E24B4A;--r:14px;
+  --gold:#B8952A;--goldl:#FEF6E4;
 }
 body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px}
-.header{background:#3C3489;color:#fff;padding:1.25rem 1.5rem;text-align:center}
-.logo{font-family:'Unbounded',sans-serif;font-size:1.2rem;font-weight:700;letter-spacing:-.02em}
+.header{background:#3C3489;color:#fff;padding:1.25rem 1.5rem;text-align:center;position:sticky;top:0;z-index:100}
+.logo{font-family:'Unbounded',sans-serif;font-size:1.1rem;font-weight:700}
 .logo span{color:#B5B0F5}
-.subtitle{font-size:13px;opacity:.6;margin-top:4px}
-.main{max-width:640px;margin:0 auto;padding:1.5rem}
+.main{max-width:680px;margin:0 auto;padding:1.25rem}
+
+/* STEPS */
+.steps{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:1.5rem}
+.step{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted);padding:6px 12px;border-radius:20px;transition:all .2s}
+.step.active{background:var(--text);color:white}
+.step.done{background:var(--kl);color:var(--k2)}
+.step-sep{width:24px;height:2px;background:var(--border);flex-shrink:0}
+
+/* CARDS */
 .card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);margin-bottom:1rem;overflow:hidden}
-.card-hd{padding:.9rem 1.25rem;border-bottom:1px solid var(--border);background:#FAFAF8}
-.card-hd h3{font-family:'Unbounded',sans-serif;font-size:.85rem;font-weight:600}
+.card-hd{padding:.9rem 1.25rem;border-bottom:1px solid var(--border);background:#FAFAF8;display:flex;align-items:center;justify-content:space-between}
+.card-hd h3{font-family:'Unbounded',sans-serif;font-size:.8rem;font-weight:600}
 .card-body{padding:1.25rem}
+
+/* CATALOG */
+.cat-filter{display:flex;gap:6px;margin-bottom:1rem;flex-wrap:wrap}
+.cat-btn{font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:white;cursor:pointer;transition:all .15s}
+.cat-btn.on{background:var(--text);color:white;border-color:var(--text)}
+.product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.product-item{border:2px solid var(--border);border-radius:12px;overflow:hidden;cursor:pointer;transition:all .2s;background:white;position:relative}
+.product-item:hover{border-color:var(--k);transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.08)}
+.product-img{width:100%;height:120px;object-fit:cover;background:#f5f5f5;display:flex;align-items:center;justify-content:center;font-size:2.5rem}
+.product-img img{width:100%;height:100%;object-fit:cover}
+.product-info{padding:.6rem .75rem}
+.product-name{font-weight:700;font-size:13px;margin-bottom:3px;line-height:1.3}
+.product-price{font-family:'Unbounded',sans-serif;font-size:.8rem;font-weight:600;color:var(--k)}
+.add-btn{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:var(--k);color:white;border:none;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;opacity:0;transition:opacity .15s}
+.product-item:hover .add-btn{opacity:1}
+.qty-badge{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:var(--text);color:white;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+
+/* CART */
+.cart-item{display:flex;align-items:center;gap:10px;padding:.65rem 0;border-bottom:1px solid var(--border)}
+.cart-item:last-child{border-bottom:none}
+.cart-name{flex:1;font-weight:600;font-size:14px}
+.cart-price{font-family:'Unbounded',sans-serif;font-size:.8rem;font-weight:600;color:var(--k);white-space:nowrap}
+.qty-ctrl{display:flex;align-items:center;gap:6px}
+.qty-btn{width:26px;height:26px;border-radius:7px;border:1px solid var(--border);background:var(--bg);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+.qty-btn:hover{background:var(--kl);border-color:var(--k)}
+.qty-num{font-weight:700;font-size:14px;min-width:20px;text-align:center}
+.cart-total{display:flex;justify-content:space-between;align-items:center;padding:.75rem 0;border-top:2px solid var(--border);margin-top:.5rem}
+.cart-total-lbl{font-weight:700;font-size:15px}
+.cart-total-val{font-family:'Unbounded',sans-serif;font-size:1.1rem;font-weight:700;color:var(--k)}
+.empty-cart{text-align:center;padding:1.5rem;color:var(--muted);font-size:14px}
+
+/* FORM */
 .field{margin-bottom:1rem}
 .field label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
-.field input,.field textarea,.field select{
-  font-family:'Nunito',sans-serif;font-size:14px;
-  border:1px solid var(--border);border-radius:9px;
-  padding:9px 12px;width:100%;outline:none;
-  background:white;color:var(--text);transition:border-color .15s;
-}
-.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--k)}
-.field textarea{min-height:80px;resize:vertical}
+.field input,.field textarea{font-family:'Nunito',sans-serif;font-size:14px;border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;width:100%;outline:none;background:white;color:var(--text);transition:border-color .15s}
+.field input:focus,.field textarea:focus{border-color:var(--k)}
+.field textarea{min-height:70px;resize:vertical}
 .required{color:var(--danger)}
-.product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
-.product-item{border:2px solid var(--border);border-radius:10px;padding:.75rem;cursor:pointer;transition:all .15s;text-align:center;background:white}
-.product-item:hover{border-color:var(--k);background:var(--kl)}
-.product-item.selected{border-color:var(--k);background:var(--kl)}
-.product-img{width:100%;height:100px;object-fit:cover;border-radius:7px;margin-bottom:8px;background:#f5f5f5}
-.product-name{font-weight:700;font-size:13px;margin-bottom:4px}
-.product-price{font-family:'Unbounded',sans-serif;font-size:.85rem;font-weight:600;color:var(--k)}
-.product-check{width:20px;height:20px;border-radius:50%;background:var(--k);color:white;font-size:11px;display:none;align-items:center;justify-content:center;margin:4px auto 0;font-weight:700}
-.product-item.selected .product-check{display:flex}
-.submit-btn{
-  font-family:'Nunito',sans-serif;font-size:16px;font-weight:700;
-  background:var(--k);color:white;border:none;border-radius:10px;
-  padding:14px;width:100%;cursor:pointer;transition:all .2s;margin-top:.5rem;
-}
-.submit-btn:hover{background:var(--k2)}
-.submit-btn:disabled{opacity:.6;cursor:not-allowed}
-.success{text-align:center;padding:2.5rem 1rem}
-.success-icon{font-size:3rem;margin-bottom:1rem}
-.success h2{font-family:'Unbounded',sans-serif;font-size:1.1rem;font-weight:700;margin-bottom:.5rem}
-.success p{color:var(--muted);font-size:14px;line-height:1.6}
-.error-msg{color:var(--danger);font-size:12px;margin-top:4px;display:none}
-.loading{text-align:center;padding:2rem;color:var(--muted)}
+.err{color:var(--danger);font-size:12px;margin-top:3px;display:none}
+
+/* PAYMENT */
+.bank-card{background:linear-gradient(135deg,#1a1a2e,#16213e);color:white;border-radius:16px;padding:1.5rem;margin-bottom:1rem}
+.bank-name{font-size:13px;opacity:.7;margin-bottom:.5rem}
+.bank-account{font-family:'Unbounded',sans-serif;font-size:1.1rem;font-weight:600;letter-spacing:.05em;margin-bottom:.25rem}
+.bank-holder{font-size:13px;opacity:.7}
+.bank-amount{background:rgba(255,255,255,0.12);border-radius:10px;padding:.75rem 1rem;margin-top:1rem;display:flex;justify-content:space-between;align-items:center}
+.bank-amount-lbl{font-size:13px;opacity:.7}
+.bank-amount-val{font-family:'Unbounded',sans-serif;font-size:1.2rem;font-weight:700;color:#B5B0F5}
+.copy-btn{background:rgba(255,255,255,0.15);border:none;color:white;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;transition:background .15s}
+.copy-btn:hover{background:rgba(255,255,255,0.25)}
+.payment-steps{counter-reset:step;margin:1rem 0}
+.payment-step{display:flex;gap:10px;align-items:flex-start;margin-bottom:.75rem;font-size:14px}
+.payment-step-num{width:24px;height:24px;border-radius:50%;background:var(--k);color:white;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.timer{background:var(--goldl);border:1px solid var(--gold);border-radius:10px;padding:.75rem 1rem;display:flex;align-items:center;gap:10px;margin-bottom:1rem;font-size:14px;font-weight:600;color:var(--gold)}
+
+/* BUTTONS */
+.btn-main{font-family:'Nunito',sans-serif;font-size:15px;font-weight:700;background:var(--k);color:white;border:none;border-radius:10px;padding:13px;width:100%;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-main:hover{background:var(--k2)}
+.btn-main:disabled{opacity:.55;cursor:not-allowed}
+.btn-sec{font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;background:white;color:var(--text);border:1.5px solid var(--border);border-radius:10px;padding:11px;width:100%;cursor:pointer;transition:all .2s;margin-top:.5rem}
+.btn-sec:hover{background:var(--bg)}
+
+/* SUCCESS */
+.success{text-align:center;padding:2rem 1rem}
+.success-icon{font-size:3.5rem;margin-bottom:1rem}
+.success h2{font-family:'Unbounded',sans-serif;font-size:1rem;font-weight:700;margin-bottom:.5rem}
+.success p{color:var(--muted);font-size:13px;line-height:1.7}
+.order-ref{background:var(--kl);border-radius:10px;padding:.75rem 1rem;margin:1rem 0;font-family:'Unbounded',sans-serif;font-size:.85rem;font-weight:700;color:var(--k2)}
+
+/* PAGES */
+.page{display:none}.page.on{display:block}
 </style>
 </head>
 <body>
 
 <header class="header">
   <div class="logo">Seal<span>Mary</span></div>
-  <div class="subtitle">Форма заказа</div>
 </header>
 
 <main class="main">
 
-  <!-- Product selection -->
-  <div class="card">
-    <div class="card-hd"><h3>🛍 Выберите товар</h3></div>
-    <div class="card-body">
-      <div id="product-grid" class="product-grid">
-        <div class="loading">Загружаем каталог...</div>
+  <!-- Steps indicator -->
+  <div class="steps">
+    <div class="step active" id="step1">🛍 Каталог</div>
+    <div class="step-sep"></div>
+    <div class="step" id="step2">📋 Данные</div>
+    <div class="step-sep"></div>
+    <div class="step" id="step3">💳 Оплата</div>
+  </div>
+
+  <!-- PAGE 1: CATALOG + CART -->
+  <div class="page on" id="page-catalog">
+    <div class="card">
+      <div class="card-hd">
+        <h3>🛍 Каталог</h3>
+        <div id="cat-filter" class="cat-filter" style="margin:0"></div>
       </div>
-      <div id="product-error" class="error-msg">Выберите товар</div>
+      <div class="card-body">
+        <div id="product-grid" class="product-grid">
+          <div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--muted)">Загружаем каталог...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="cart-card">
+      <div class="card-hd">
+        <h3>🛒 Корзина</h3>
+        <span id="cart-count" style="font-size:12px;color:var(--muted)">пусто</span>
+      </div>
+      <div class="card-body">
+        <div id="cart-items"><div class="empty-cart">Добавьте товары из каталога</div></div>
+        <div id="cart-footer" style="display:none">
+          <div class="cart-total">
+            <span class="cart-total-lbl">Итого:</span>
+            <span class="cart-total-val" id="cart-total">0 ₩</span>
+          </div>
+          <button class="btn-main" onclick="goToForm()">Оформить заказ →</button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Contact form -->
-  <div class="card">
-    <div class="card-hd"><h3>📋 Ваши данные</h3></div>
-    <div class="card-body">
-      <div class="field">
-        <label>Имя <span class="required">*</span></label>
-        <input type="text" id="f-name" placeholder="Ваше имя">
-        <div class="error-msg" id="err-name">Введите имя</div>
+  <!-- PAGE 2: CONTACT FORM -->
+  <div class="page" id="page-form">
+    <div class="card">
+      <div class="card-hd">
+        <h3>📋 Ваши данные</h3>
+        <button class="btn-sec" style="width:auto;padding:5px 12px;font-size:12px" onclick="goBack('catalog')">← Назад</button>
       </div>
-      <div class="field">
-        <label>Телефон <span class="required">*</span></label>
-        <input type="tel" id="f-phone" placeholder="+82 10-0000-0000">
-        <div class="error-msg" id="err-phone">Введите телефон</div>
+      <div class="card-body">
+        <!-- Order summary -->
+        <div style="background:var(--kl);border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;font-size:13px" id="form-summary"></div>
+
+        <div class="field">
+          <label>Имя <span class="required">*</span></label>
+          <input type="text" id="f-name" placeholder="Ваше имя">
+          <div class="err" id="err-name">Введите имя</div>
+        </div>
+        <div class="field">
+          <label>Телефон <span class="required">*</span></label>
+          <input type="tel" id="f-phone" placeholder="010-0000-0000">
+          <div class="err" id="err-phone">Введите телефон</div>
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="f-email" placeholder="your@email.com">
+        </div>
+        <div class="field">
+          <label>Адрес доставки <span class="required">*</span></label>
+          <input type="text" id="f-address" placeholder="Город, улица, дом, квартира, индекс">
+          <div class="err" id="err-address">Введите адрес</div>
+        </div>
+        <div class="field">
+          <label>Комментарий</label>
+          <textarea id="f-comment" placeholder="Пожелания, вопросы..."></textarea>
+        </div>
+        <button class="btn-main" onclick="submitOrder()">Перейти к оплате →</button>
       </div>
-      <div class="field">
-        <label>Email</label>
-        <input type="email" id="f-email" placeholder="your@email.com">
-      </div>
-      <div class="field">
-        <label>Адрес доставки <span class="required">*</span></label>
-        <input type="text" id="f-address" placeholder="Город, улица, дом, квартира">
-        <div class="error-msg" id="err-address">Введите адрес</div>
-      </div>
-      <div class="field">
-        <label>Комментарий к заказу</label>
-        <textarea id="f-comment" placeholder="Пожелания, вопросы..."></textarea>
-      </div>
-      <button class="submit-btn" id="submit-btn" onclick="submitOrder()">
-        Оформить заказ
-      </button>
     </div>
   </div>
 
-  <!-- Success state (hidden) -->
-  <div id="success-block" style="display:none">
+  <!-- PAGE 3: PAYMENT -->
+  <div class="page" id="page-payment">
+    <div class="card">
+      <div class="card-hd"><h3>💳 Оплата через тонжан</h3></div>
+      <div class="card-body">
+        <div class="timer">⏰ Переведите в течение 24 часов — иначе заказ будет отменён</div>
+
+        <div class="bank-card">
+          <div class="bank-name">은행이름</div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:.25rem">
+            <div class="bank-account" id="pay-account">000-000-000000</div>
+            <button class="copy-btn" onclick="copyAccount()">복사</button>
+          </div>
+          <div class="bank-holder">HOLDER NAME</div>
+          <div class="bank-amount">
+            <span class="bank-amount-lbl">Сумма к оплате:</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="bank-amount-val" id="pay-amount">0 ₩</span>
+              <button class="copy-btn" onclick="copyAmount()">복사</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="payment-steps">
+          <div class="payment-step"><div class="payment-step-num">1</div><div>Откройте банковское приложение (신한 SOL, Toss и др.)</div></div>
+          <div class="payment-step"><div class="payment-step-num">2</div><div>Перейдите в <b>계좌이체</b> (перевод)</div></div>
+          <div class="payment-step"><div class="payment-step-num">3</div><div>Введите номер счёта и сумму точно как указано выше</div></div>
+          <div class="payment-step"><div class="payment-step-num">4</div><div>В комментарии укажите ваш номер заказа: <b id="pay-ordernum"></b></div></div>
+          <div class="payment-step"><div class="payment-step-num">5</div><div>Нажмите кнопку ниже после перевода</div></div>
+        </div>
+
+        <button class="btn-main" onclick="confirmPayment()">✅ Я оплатил(а)!</button>
+        <button class="btn-sec" onclick="goBack('form')">← Изменить данные</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE 4: SUCCESS -->
+  <div class="page" id="page-success">
     <div class="card">
       <div class="success">
         <div class="success-icon">🎉</div>
-        <h2>Заказ принят!</h2>
-        <p>Мы свяжемся с вами в ближайшее время.<br>Следите за сообщениями на телефоне и email.</p>
-        <button class="submit-btn" style="margin-top:1.5rem;max-width:200px" onclick="resetForm()">Новый заказ</button>
+        <h2>Спасибо за заказ!</h2>
+        <div class="order-ref" id="success-ordernum"></div>
+        <p>Мы проверим оплату и свяжемся с вами.<br>Следите за сообщениями на телефоне и email.<br><br>Обычно обработка занимает 1-2 рабочих дня.</p>
+        <button class="btn-main" style="margin-top:1.5rem;max-width:220px;margin-left:auto;margin-right:auto" onclick="resetAll()">Новый заказ</button>
       </div>
     </div>
   </div>
@@ -139,42 +259,142 @@ firebase.initializeApp({
 var db = firebase.database();
 
 var products = [];
-var selectedProduct = null;
+var cart = {}; // {productId: {product, qty}}
+var currentOrder = null;
+var catFilter = 'all';
 
-// Load only Bardak Studio products
-db.ref('products').orderByChild('owner').equalTo('masha').once('value', function(snap){
-  products = [];
-  snap.forEach(function(c){ products.push(Object.assign({fbKey:c.key}, c.val())); });
-  renderProducts();
-});
+var BANK = {
+  bank: '은행이름', // Здесь банк Маши
+  account: '000-000-000000', // Номер счёта
+  holder: 'HOLDER NAME' // Имя
+};
 
 function fmt(n){ return Math.round(n).toLocaleString('ru-RU') + ' ₩'; }
 
-function renderProducts(){
+// Load products
+db.ref('products').orderByChild('owner').equalTo('masha').once('value', function(snap){
+  products = [];
+  snap.forEach(function(c){ products.push(Object.assign({fbKey:c.key}, c.val())); });
+  renderCatalog();
+});
+
+// CATALOG
+function renderCatalog(){
   var grid = document.getElementById('product-grid');
-  if(!products.length){
-    grid.innerHTML = '<div class="loading">Нет товаров в каталоге</div>';
+  var list = catFilter==='all' ? products : products.filter(function(p){
+    return p.name.toLowerCase().indexOf(catFilter.toLowerCase()) >= 0;
+  });
+
+  if(!list.length){
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--muted)">Нет товаров</div>';
     return;
   }
   grid.innerHTML = '';
-  products.forEach(function(p){
+  list.forEach(function(p){
+    var avail = p.availability || 'available';
+    // Skip unavailable
+    if(avail === 'unavailable') return;
+
+    var qty = cart[p.id] ? cart[p.id].qty : 0;
+    var isOrderable = avail === 'available' || avail === 'preorder';
+
+    var badge = '';
+    if(avail === 'coming_soon') badge = '<div style="position:absolute;top:8px;left:8px;background:#FAC775;color:#854F0B;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px">🔜 Скоро</div>';
+    if(avail === 'preorder') badge = '<div style="position:absolute;top:8px;left:8px;background:var(--ml);color:var(--m2);font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px">📋 Предзаказ</div>';
+
     var div = document.createElement('div');
     div.className = 'product-item';
+    if(avail === 'coming_soon') div.style.opacity = '0.7';
     div.innerHTML =
-      (p.photo ? '<img class="product-img" src="'+p.photo+'" alt="'+p.name+'">' :
-        '<div class="product-img" style="display:flex;align-items:center;justify-content:center;font-size:2rem">🎨</div>')+
-      '<div class="product-name">'+p.name+'</div>'+
-      '<div class="product-price">'+fmt(p.price)+'</div>'+
-      '<div class="product-check">✓</div>';
-    div.onclick = function(){
-      document.querySelectorAll('.product-item').forEach(function(el){ el.classList.remove('selected'); });
-      div.classList.add('selected');
-      selectedProduct = p;
-      document.getElementById('product-error').style.display = 'none';
-    };
+      '<div class="product-img">'+(p.photo?'<img src="'+p.photo+'" alt="'+p.name+'">':'🎨')+'</div>'+
+      badge+
+      '<div class="product-info">'+
+        '<div class="product-name">'+p.name+'</div>'+
+        '<div class="product-price">'+fmt(p.price)+'</div>'+
+        (avail==='preorder'?'<div style="font-size:10px;color:var(--m2);font-weight:700;margin-top:2px">Предзаказ</div>':'')+
+      '</div>'+
+      (qty>0?'<div class="qty-badge">'+qty+'</div>':(isOrderable?'<button class="add-btn">+</button>':''));
+
+    if(qty>0) div.style.borderColor = 'var(--k)';
+
+    if(isOrderable){
+      div.onclick = function(){ addToCart(p); };
+    }
     grid.appendChild(div);
   });
 }
+
+function addToCart(p){
+  if(cart[p.id]){ cart[p.id].qty++; }
+  else { cart[p.id] = {product:p, qty:1}; }
+  renderCatalog();
+  renderCart();
+}
+
+// CART
+function renderCart(){
+  var items = Object.values(cart).filter(function(i){ return i.qty>0; });
+  var countEl = document.getElementById('cart-count');
+  var itemsEl = document.getElementById('cart-items');
+  var footerEl = document.getElementById('cart-footer');
+  var totalEl = document.getElementById('cart-total');
+
+  if(!items.length){
+    countEl.textContent = 'пусто';
+    itemsEl.innerHTML = '<div class="empty-cart">Добавьте товары из каталога</div>';
+    footerEl.style.display = 'none';
+    return;
+  }
+
+  var total = 0;
+  var count = 0;
+  items.forEach(function(i){ total += i.product.price * i.qty; count += i.qty; });
+
+  countEl.textContent = count + ' товар(а) — ' + fmt(total);
+  totalEl.textContent = fmt(total);
+  footerEl.style.display = 'block';
+
+  itemsEl.innerHTML = '';
+  items.forEach(function(i){
+    var row = document.createElement('div');
+    row.className = 'cart-item';
+    row.innerHTML =
+      '<div class="cart-name">'+i.product.name+'</div>'+
+      '<div class="qty-ctrl">'+
+        '<button class="qty-btn">−</button>'+
+        '<span class="qty-num">'+i.qty+'</span>'+
+        '<button class="qty-btn">+</button>'+
+      '</div>'+
+      '<div class="cart-price">'+fmt(i.product.price * i.qty)+'</div>';
+
+    var btns = row.querySelectorAll('.qty-btn');
+    btns[0].onclick = function(){
+      cart[i.product.id].qty--;
+      if(cart[i.product.id].qty <= 0) delete cart[i.product.id];
+      renderCatalog(); renderCart();
+    };
+    btns[1].onclick = function(){ cart[i.product.id].qty++; renderCatalog(); renderCart(); };
+    itemsEl.appendChild(row);
+  });
+}
+
+function goToForm(){
+  var items = Object.values(cart).filter(function(i){ return i.qty>0; });
+  if(!items.length){ alert('Добавьте товары в корзину'); return; }
+
+  // Build summary
+  var summary = items.map(function(i){
+    return i.product.name + (i.qty>1?' × '+i.qty:'') + ' — ' + fmt(i.product.price*i.qty);
+  }).join('<br>');
+  var total = items.reduce(function(a,i){ return a+i.product.price*i.qty; },0);
+  document.getElementById('form-summary').innerHTML =
+    summary + '<hr style="margin:.5rem 0;border:none;border-top:1px solid rgba(0,0,0,0.1)">'+
+    '<b>Итого: '+fmt(total)+'</b>';
+
+  showPage('form');
+}
+
+function goBack(page){ showPage(page); }
 
 function submitOrder(){
   var name = document.getElementById('f-name').value.trim();
@@ -183,71 +403,107 @@ function submitOrder(){
   var address = document.getElementById('f-address').value.trim();
   var comment = document.getElementById('f-comment').value.trim();
 
-  // Validate
   var valid = true;
-  if(!selectedProduct){
-    document.getElementById('product-error').style.display = 'block';
-    valid = false;
-  }
   if(!name){ document.getElementById('err-name').style.display='block'; valid=false; }
   else document.getElementById('err-name').style.display='none';
   if(!phone){ document.getElementById('err-phone').style.display='block'; valid=false; }
   else document.getElementById('err-phone').style.display='none';
   if(!address){ document.getElementById('err-address').style.display='block'; valid=false; }
   else document.getElementById('err-address').style.display='none';
-
   if(!valid) return;
 
-  var btn = document.getElementById('submit-btn');
-  btn.disabled = true;
-  btn.textContent = 'Отправляем...';
-
-  // Generate order number
+  var items = Object.values(cart).filter(function(i){ return i.qty>0; });
+  var total = items.reduce(function(a,i){ return a+i.product.price*i.qty; },0);
   var orderNum = 'SM-' + Date.now().toString().slice(-6);
+  var productStr = items.map(function(i){ return i.product.name+(i.qty>1?' x'+i.qty:''); }).join(', ');
 
-  var order = {
+  var hasPreorder = items.some(function(i){ return i.product.availability==='preorder'; });
+  currentOrder = {
     orderNum: orderNum,
-    name: name,
-    phone: phone,
-    email: email,
-    address: address,
-    comment: comment,
-    product: selectedProduct.name,
-    productId: selectedProduct.id,
-    total: selectedProduct.price,
+    name: name, phone: phone, email: email,
+    address: address, comment: comment,
+    product: productStr,
+    total: total,
     shop: 'sealmary',
     status: 'new',
+    paymentStatus: 'pending',
+    orderType: hasPreorder ? 'preorder' : 'regular',
     ts: Date.now(),
     createdAt: new Date().toISOString()
   };
 
-  db.ref('orders').push(order, function(err){
-    if(err){
-      btn.disabled = false;
-      btn.textContent = 'Оформить заказ';
-      alert('Ошибка при отправке. Попробуйте ещё раз.');
-    } else {
-      // Show success
-      document.querySelector('main').querySelectorAll('.card').forEach(function(el){
-        el.style.display='none';
-      });
-      document.getElementById('success-block').style.display='block';
-    }
+  // Save to Firebase
+  db.ref('orders').push(currentOrder);
+
+  // Show payment page
+  document.getElementById('pay-amount').textContent = fmt(total);
+  document.getElementById('pay-ordernum').textContent = orderNum;
+  showPage('payment');
+}
+
+function confirmPayment(){
+  if(!currentOrder) return;
+  // Update payment status
+  db.ref('orders').orderByChild('orderNum').equalTo(currentOrder.orderNum).once('value', function(snap){
+    snap.forEach(function(c){
+      db.ref('orders/'+c.key).update({paymentStatus:'awaiting_confirmation', status:'processing'});
+    });
+  });
+  document.getElementById('success-ordernum').textContent = '№ ' + currentOrder.orderNum;
+  showPage('success');
+}
+
+function copyAccount(){
+  navigator.clipboard.writeText(BANK.account).then(function(){
+    toast('Номер скопирован!');
+  });
+}
+function copyAmount(){
+  var items = Object.values(cart).filter(function(i){ return i.qty>0; });
+  var total = items.reduce(function(a,i){ return a+i.product.price*i.qty; },0);
+  navigator.clipboard.writeText(String(total)).then(function(){
+    toast('Сумма скопирована!');
   });
 }
 
-function resetForm(){
-  selectedProduct = null;
-  document.getElementById('f-name').value = '';
-  document.getElementById('f-phone').value = '';
-  document.getElementById('f-email').value = '';
-  document.getElementById('f-address').value = '';
-  document.getElementById('f-comment').value = '';
-  document.querySelectorAll('.product-item').forEach(function(el){ el.classList.remove('selected'); });
-  document.querySelector('main').querySelectorAll('.card').forEach(function(el){
-    el.style.display='block';
+function showPage(name){
+  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('on'); });
+  document.getElementById('page-'+name).classList.add('on');
+  // Update steps
+  var stepMap = {catalog:1, form:2, payment:3, success:3};
+  var current = stepMap[name]||1;
+  ['step1','step2','step3'].forEach(function(id, idx){
+    var el = document.getElementById(id);
+    el.className = 'step'+(idx+1<current?' done':idx+1===current?' active':'');
   });
-  document.getElementById('success-block').style.display='none';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function resetAll(){
+  cart = {};
+  currentOrder = null;
+  document.getElementById('f-name').value='';
+  document.getElementById('f-phone').value='';
+  document.getElementById('f-email').value='';
+  document.getElementById('f-address').value='';
+  document.getElementById('f-comment').value='';
+  renderCatalog(); renderCart();
+  showPage('catalog');
+}
+
+var toastTimer;
+function toast(msg){
+  var el = document.getElementById('toast-el');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'toast-el';
+    el.style.cssText='position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1A1A1A;color:white;padding:10px 20px;border-radius:30px;font-size:13px;font-weight:700;z-index:9999;font-family:Nunito,sans-serif';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.opacity='1';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ el.style.opacity='0'; }, 2000);
 }
 </script>
 </body>
