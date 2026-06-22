@@ -2268,6 +2268,32 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
 .profit-val{font-family:'Unbounded',sans-serif;font-size:1.4rem;font-weight:700}
 .profit-val.pos{color:var(--k2)}
 .profit-val.neg{color:var(--danger)}
+
+/* ORDERS */
+.order-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:1rem 1.25rem;margin-bottom:.75rem;transition:border-color .2s}
+.order-card.new{border-left:4px solid var(--danger)}
+.order-card.processing{border-left:4px solid var(--gold)}
+.order-card.ready{border-left:4px solid var(--k)}
+.order-card.shipped{border-left:4px solid var(--m)}
+.order-card.done{border-left:4px solid #aaa}
+.order-hd{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:.75rem}
+.order-num{font-family:'Unbounded',sans-serif;font-size:.8rem;font-weight:700;color:var(--muted)}
+.order-name{font-weight:700;font-size:15px;flex:1}
+.order-status{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;border:none;cursor:pointer;white-space:nowrap}
+.order-status.new{background:#FCEBEB;color:var(--danger)}
+.order-status.processing{background:var(--goldl);color:#854F0B}
+.order-status.ready{background:var(--kl);color:var(--k2)}
+.order-status.shipped{background:var(--ml);color:var(--m2)}
+.order-status.done{background:#F1EFE8;color:#5F5E5A}
+.order-info{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;font-size:13px;margin-bottom:.75rem}
+.order-field{color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.order-val{font-weight:600;color:var(--text)}
+.order-items{background:#FAFAF8;border-radius:8px;padding:.6rem .75rem;font-size:13px}
+.order-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:.75rem}
+.status-flow{display:flex;gap:4px;flex-wrap:wrap}
+.status-btn{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:white;cursor:pointer;transition:all .15s}
+.status-btn:hover{background:var(--bg)}
+.status-btn.active{background:var(--text);color:white;border-color:var(--text)}
 </style>
 </head>
 <body>
@@ -2316,6 +2342,7 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
       <button class="tab" onclick="goTab('catalog',this)">🏷 Каталог</button>
       <button class="tab" onclick="goTab('inventory',this)">📦 Склад</button>
       <button class="tab" onclick="goTab('expenses',this)">💸 Расходы</button>
+      <button class="tab" onclick="goTab('orders',this)">🛒 Заказы</button>
       <button class="tab" onclick="goTab('publish',this)">📸 Публикации</button>
       <button class="tab" onclick="goTab('settings',this)">⚙️ Настройки</button>
     </nav>
@@ -2795,6 +2822,29 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
     <div class="card-hd"><h3>История расходов</h3><button class="btn sm" onclick="exportExpensesCSV()">📥 CSV</button></div>
     <div id="exp-list" style="max-height:500px;overflow-y:auto"><div class="empty">Нет расходов</div></div>
   </div>
+</div>
+
+
+<!-- ORDERS -->
+<div id="pg-orders" class="pg">
+  <div class="stats" id="orders-stats"></div>
+
+  <!-- Filters -->
+  <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
+    <span style="font-size:12px;font-weight:700;color:var(--muted)">Статус:</span>
+    <button class="btn sm" id="of-all" onclick="filterOrders('all')" style="background:var(--text);color:#fff;border-color:var(--text)">Все</button>
+    <button class="btn sm" id="of-new" onclick="filterOrders('new')" style="background:#FCEBEB;color:var(--danger);border-color:var(--danger)">🔴 Новые</button>
+    <button class="btn sm" id="of-processing" onclick="filterOrders('processing')" style="background:var(--goldl);color:#854F0B;border-color:#FAC775">⚡ В работе</button>
+    <button class="btn sm" id="of-ready" onclick="filterOrders('ready')" style="background:var(--kl);color:var(--k2);border-color:var(--k)">✅ Готовы</button>
+    <button class="btn sm" id="of-shipped" onclick="filterOrders('shipped')" style="background:var(--ml);color:var(--m2);border-color:var(--m)">📦 Отправлены</button>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button class="btn sm bdg k" id="of-bardak" onclick="filterOrdersShop('bardak')">Bardak Studio</button>
+      <button class="btn sm bdg m" id="of-sealmary" onclick="filterOrdersShop('sealmary')">SealMary</button>
+      <button class="btn sm" id="of-shop-all" onclick="filterOrdersShop('all')" style="background:var(--bg)">Все магазины</button>
+    </div>
+  </div>
+
+  <div id="orders-list"><div class="empty">Нет заказов</div></div>
 </div>
 
 </main>
@@ -4818,6 +4868,177 @@ renderCatalog = function(){
     })(key,p.id);
   });
 };
+
+
+// ===== ORDERS MODULE =====
+var orders = [];
+var orderFilter = 'all';
+var orderShopFilter = 'all';
+
+var ORDER_STATUSES = {
+  new:        {label:'🔴 Новый',      cls:'new'},
+  processing: {label:'⚡ В работе',   cls:'processing'},
+  ready:      {label:'✅ Готов',      cls:'ready'},
+  shipped:    {label:'📦 Отправлен',  cls:'shipped'},
+  done:       {label:'🏁 Завершён',   cls:'done'}
+};
+
+function startOrdersListener(){
+  db.ref('orders').on('value', function(snap){
+    orders = [];
+    snap.forEach(function(c){ orders.push(Object.assign({fbKey:c.key}, c.val())); });
+    orders.sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
+    renderOrders();
+    renderOrdersStats();
+  });
+}
+
+function renderOrdersStats(){
+  var el = document.getElementById('orders-stats');
+  if(!el) return;
+  var total = orders.length;
+  var newOrders = orders.filter(function(o){ return o.status==='new'; }).length;
+  var processing = orders.filter(function(o){ return o.status==='processing'; }).length;
+  var ready = orders.filter(function(o){ return o.status==='ready'; }).length;
+  el.innerHTML =
+    '<div class="stat"><div class="slbl">Всего заказов</div><div class="sval">'+total+'</div></div>'+
+    '<div class="stat"><div class="slbl">🔴 Новых</div><div class="sval" style="color:var(--danger)">'+newOrders+'</div></div>'+
+    '<div class="stat"><div class="slbl">⚡ В работе</div><div class="sval" style="color:var(--gold)">'+processing+'</div></div>'+
+    '<div class="stat"><div class="slbl">✅ Готово</div><div class="sval g">'+ready+'</div></div>';
+}
+
+function filterOrders(status){
+  orderFilter = status;
+  ['all','new','processing','ready','shipped'].forEach(function(s){
+    var el = document.getElementById('of-'+s);
+    if(el) el.style.opacity = s===status?'1':'0.45';
+  });
+  renderOrders();
+}
+
+function filterOrdersShop(shop){
+  orderShopFilter = shop;
+  ['all','bardak','sealmary'].forEach(function(s){
+    var el = document.getElementById('of-shop-'+(s==='all'?'all':s));
+    var el2 = document.getElementById('of-'+s);
+    var target = s==='all'?document.getElementById('of-shop-all'):document.getElementById('of-'+s);
+    if(target) target.style.opacity = s===shop?'1':'0.45';
+  });
+  renderOrders();
+}
+
+function getFilteredOrders(){
+  return orders.filter(function(o){
+    if(orderFilter!=='all' && o.status!==orderFilter) return false;
+    if(orderShopFilter!=='all' && o.shop!==orderShopFilter) return false;
+    return true;
+  });
+}
+
+function updateOrderStatus(fbKey, status){
+  db.ref('orders/'+fbKey).update({status:status, updatedAt:Date.now()});
+  toast('Статус обновлён: '+ORDER_STATUSES[status].label,'ok');
+}
+
+function deleteOrder(fbKey){
+  if(!confirm('Удалить заказ?')) return;
+  db.ref('orders/'+fbKey).remove();
+  toast('Заказ удалён');
+}
+
+function renderOrders(){
+  var list = getFilteredOrders();
+  var el = document.getElementById('orders-list');
+  if(!el) return;
+  if(!list.length){el.innerHTML='<div class="empty">Нет заказов</div>';return;}
+  el.innerHTML = '';
+
+  list.forEach(function(o, idx){
+    var status = o.status||'new';
+    var statusInfo = ORDER_STATUSES[status]||ORDER_STATUSES.new;
+    var shopBadge = o.shop==='bardak'?
+      '<span class="bdg k" style="font-size:10px">Bardak Studio</span>':
+      '<span class="bdg m" style="font-size:10px">SealMary</span>';
+    var orderNum = '#'+(o.orderNum||String(o.ts||idx).slice(-4));
+    var date = o.ts ? new Date(o.ts).toLocaleDateString('ru-RU') : '—';
+    var time = o.ts ? new Date(o.ts).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}) : '';
+
+    var card = document.createElement('div');
+    card.className = 'order-card '+status;
+
+    card.innerHTML =
+      '<div class="order-hd">'+
+        '<span class="order-num">'+orderNum+'</span>'+
+        '<span class="order-name">'+o.name+'</span>'+
+        shopBadge+
+        '<span class="order-status '+status+'">'+statusInfo.label+'</span>'+
+        '<span style="font-size:12px;color:var(--muted);margin-left:auto">'+date+' '+time+'</span>'+
+      '</div>'+
+      '<div class="order-info">'+
+        '<div><div class="order-field">Телефон</div><div class="order-val"><a href="tel:'+o.phone+'" style="color:var(--k);text-decoration:none">'+o.phone+'</a></div></div>'+
+        (o.email?'<div><div class="order-field">Email</div><div class="order-val"><a href="mailto:'+o.email+'" style="color:var(--k);text-decoration:none">'+o.email+'</a></div></div>':'')+
+        (o.address?'<div><div class="order-field">Адрес</div><div class="order-val">'+o.address+'</div></div>':'')+
+        (o.comment?'<div><div class="order-field">Комментарий</div><div class="order-val">'+o.comment+'</div></div>':'')+
+      '</div>'+
+      '<div class="order-items">'+
+        '<div class="order-field" style="margin-bottom:4px">Товар</div>'+
+        '<div style="font-weight:600">'+o.product+'</div>'+
+        (o.total?'<div style="font-family:Unbounded,sans-serif;font-size:.9rem;font-weight:700;color:var(--k);margin-top:4px">'+fmt(o.total)+'</div>':'')+
+      '</div>'+
+      '<div class="order-actions">'+
+        '<div class="status-flow">'+
+          Object.keys(ORDER_STATUSES).map(function(s){
+            return '<button class="status-btn'+(status===s?' active':'')+'" data-status="'+s+'">'+ORDER_STATUSES[s].label+'</button>';
+          }).join('')+
+        '</div>'+
+        '<button class="del-btn" style="margin-left:auto">✕</button>'+
+      '</div>';
+
+    // Bind status buttons
+    card.querySelectorAll('.status-btn').forEach(function(btn){
+      btn.onclick = function(){ updateOrderStatus(o.fbKey, btn.getAttribute('data-status')); };
+    });
+    card.querySelector('.del-btn').onclick = function(){ deleteOrder(o.fbKey); };
+
+    el.appendChild(card);
+  });
+}
+
+// Override startListeners
+var _origStartListeners3 = startListeners;
+startListeners = function(){
+  _origStartListeners3();
+  startOrdersListener();
+};
+
+// Override goTab
+var _origGoTab3 = goTab;
+goTab = function(name, btn){
+  _origGoTab3(name, btn);
+  if(name==='orders'){ renderOrders(); renderOrdersStats(); }
+};
+
+// ===== SEND ORDER NOTIFICATION TO TELEGRAM =====
+function notifyNewOrder(order){
+  var botToken = order.shop==='bardak' ? settings.tgToken : settings.smToken;
+  var channel = order.shop==='bardak' ? settings.tgChannel : settings.smChannel;
+  if(!botToken || !channel) return;
+
+  var text = '🛒 Новый заказ!\n\n'+
+    '👤 '+order.name+'\n'+
+    '📞 '+order.phone+'\n'+
+    (order.email?'📧 '+order.email+'\n':'')+
+    (order.address?'📍 '+order.address+'\n':'')+
+    '🛍 '+order.product+'\n'+
+    (order.comment?'💬 '+order.comment+'\n':'')+
+    '\n#заказ #'+order.shop;
+
+  fetch('https://api.telegram.org/bot'+botToken+'/sendMessage',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({chat_id:channel, text:text})
+  }).catch(function(){});
+}
 
 </script>
 </body>

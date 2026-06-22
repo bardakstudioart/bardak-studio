@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bardak Studio — Заказ</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --k:#1D9E75;--kl:#E1F5EE;--k2:#0F6E56;
+  --bg:#F7F5F0;--surface:#fff;--border:rgba(0,0,0,0.09);
+  --text:#1A1A1A;--muted:#888;--danger:#E24B4A;--r:14px;
+}
+body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px}
+.header{background:var(--text);color:#fff;padding:1.25rem 1.5rem;text-align:center}
+.logo{font-family:'Unbounded',sans-serif;font-size:1.2rem;font-weight:700;letter-spacing:-.02em}
+.logo span{color:#9FE1CB}
+.subtitle{font-size:13px;opacity:.6;margin-top:4px}
+.main{max-width:640px;margin:0 auto;padding:1.5rem}
+.card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);margin-bottom:1rem;overflow:hidden}
+.card-hd{padding:.9rem 1.25rem;border-bottom:1px solid var(--border);background:#FAFAF8}
+.card-hd h3{font-family:'Unbounded',sans-serif;font-size:.85rem;font-weight:600}
+.card-body{padding:1.25rem}
+.field{margin-bottom:1rem}
+.field label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.field input,.field textarea,.field select{
+  font-family:'Nunito',sans-serif;font-size:14px;
+  border:1px solid var(--border);border-radius:9px;
+  padding:9px 12px;width:100%;outline:none;
+  background:white;color:var(--text);transition:border-color .15s;
+}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--k)}
+.field textarea{min-height:80px;resize:vertical}
+.required{color:var(--danger)}
+.product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.product-item{border:2px solid var(--border);border-radius:10px;padding:.75rem;cursor:pointer;transition:all .15s;text-align:center;background:white}
+.product-item:hover{border-color:var(--k);background:var(--kl)}
+.product-item.selected{border-color:var(--k);background:var(--kl)}
+.product-img{width:100%;height:100px;object-fit:cover;border-radius:7px;margin-bottom:8px;background:#f5f5f5}
+.product-name{font-weight:700;font-size:13px;margin-bottom:4px}
+.product-price{font-family:'Unbounded',sans-serif;font-size:.85rem;font-weight:600;color:var(--k)}
+.product-check{width:20px;height:20px;border-radius:50%;background:var(--k);color:white;font-size:11px;display:none;align-items:center;justify-content:center;margin:4px auto 0;font-weight:700}
+.product-item.selected .product-check{display:flex}
+.submit-btn{
+  font-family:'Nunito',sans-serif;font-size:16px;font-weight:700;
+  background:var(--k);color:white;border:none;border-radius:10px;
+  padding:14px;width:100%;cursor:pointer;transition:all .2s;margin-top:.5rem;
+}
+.submit-btn:hover{background:var(--k2)}
+.submit-btn:disabled{opacity:.6;cursor:not-allowed}
+.success{text-align:center;padding:2.5rem 1rem}
+.success-icon{font-size:3rem;margin-bottom:1rem}
+.success h2{font-family:'Unbounded',sans-serif;font-size:1.1rem;font-weight:700;margin-bottom:.5rem}
+.success p{color:var(--muted);font-size:14px;line-height:1.6}
+.error-msg{color:var(--danger);font-size:12px;margin-top:4px;display:none}
+.loading{text-align:center;padding:2rem;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">Bardak <span>Studio</span></div>
+  <div class="subtitle">Форма заказа</div>
+</header>
+
+<main class="main">
+
+  <!-- Product selection -->
+  <div class="card">
+    <div class="card-hd"><h3>🛍 Выберите товар</h3></div>
+    <div class="card-body">
+      <div id="product-grid" class="product-grid">
+        <div class="loading">Загружаем каталог...</div>
+      </div>
+      <div id="product-error" class="error-msg">Выберите товар</div>
+    </div>
+  </div>
+
+  <!-- Contact form -->
+  <div class="card">
+    <div class="card-hd"><h3>📋 Ваши данные</h3></div>
+    <div class="card-body">
+      <div class="field">
+        <label>Имя <span class="required">*</span></label>
+        <input type="text" id="f-name" placeholder="Ваше имя">
+        <div class="error-msg" id="err-name">Введите имя</div>
+      </div>
+      <div class="field">
+        <label>Телефон <span class="required">*</span></label>
+        <input type="tel" id="f-phone" placeholder="+82 10-0000-0000">
+        <div class="error-msg" id="err-phone">Введите телефон</div>
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="f-email" placeholder="your@email.com">
+      </div>
+      <div class="field">
+        <label>Адрес доставки <span class="required">*</span></label>
+        <input type="text" id="f-address" placeholder="Город, улица, дом, квартира">
+        <div class="error-msg" id="err-address">Введите адрес</div>
+      </div>
+      <div class="field">
+        <label>Комментарий к заказу</label>
+        <textarea id="f-comment" placeholder="Пожелания, вопросы..."></textarea>
+      </div>
+      <button class="submit-btn" id="submit-btn" onclick="submitOrder()">
+        Оформить заказ
+      </button>
+    </div>
+  </div>
+
+  <!-- Success state (hidden) -->
+  <div id="success-block" style="display:none">
+    <div class="card">
+      <div class="success">
+        <div class="success-icon">🎉</div>
+        <h2>Заказ принят!</h2>
+        <p>Мы свяжемся с вами в ближайшее время.<br>Следите за сообщениями на телефоне и email.</p>
+        <button class="submit-btn" style="margin-top:1.5rem;max-width:200px" onclick="resetForm()">Новый заказ</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyAWZJ0W0bCpnDh_KONfsFZ6x3JqWGA8_gk",
+  authDomain:"bardakstudio250697.firebaseapp.com",
+  databaseURL:"https://bardakstudio250697-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"bardakstudio250697",
+  storageBucket:"bardakstudio250697.firebasestorage.app",
+  messagingSenderId:"691882841885",
+  appId:"1:691882841885:web:569ede621e52eecb8673f4"
+});
+var db = firebase.database();
+
+var products = [];
+var selectedProduct = null;
+
+// Load only Bardak Studio products
+db.ref('products').orderByChild('owner').equalTo('katya').once('value', function(snap){
+  products = [];
+  snap.forEach(function(c){ products.push(Object.assign({fbKey:c.key}, c.val())); });
+  renderProducts();
+});
+
+function fmt(n){ return Math.round(n).toLocaleString('ru-RU') + ' ₩'; }
+
+function renderProducts(){
+  var grid = document.getElementById('product-grid');
+  if(!products.length){
+    grid.innerHTML = '<div class="loading">Нет товаров в каталоге</div>';
+    return;
+  }
+  grid.innerHTML = '';
+  products.forEach(function(p){
+    var div = document.createElement('div');
+    div.className = 'product-item';
+    div.innerHTML =
+      (p.photo ? '<img class="product-img" src="'+p.photo+'" alt="'+p.name+'">' :
+        '<div class="product-img" style="display:flex;align-items:center;justify-content:center;font-size:2rem">🎨</div>')+
+      '<div class="product-name">'+p.name+'</div>'+
+      '<div class="product-price">'+fmt(p.price)+'</div>'+
+      '<div class="product-check">✓</div>';
+    div.onclick = function(){
+      document.querySelectorAll('.product-item').forEach(function(el){ el.classList.remove('selected'); });
+      div.classList.add('selected');
+      selectedProduct = p;
+      document.getElementById('product-error').style.display = 'none';
+    };
+    grid.appendChild(div);
+  });
+}
+
+function submitOrder(){
+  var name = document.getElementById('f-name').value.trim();
+  var phone = document.getElementById('f-phone').value.trim();
+  var email = document.getElementById('f-email').value.trim();
+  var address = document.getElementById('f-address').value.trim();
+  var comment = document.getElementById('f-comment').value.trim();
+
+  // Validate
+  var valid = true;
+  if(!selectedProduct){
+    document.getElementById('product-error').style.display = 'block';
+    valid = false;
+  }
+  if(!name){ document.getElementById('err-name').style.display='block'; valid=false; }
+  else document.getElementById('err-name').style.display='none';
+  if(!phone){ document.getElementById('err-phone').style.display='block'; valid=false; }
+  else document.getElementById('err-phone').style.display='none';
+  if(!address){ document.getElementById('err-address').style.display='block'; valid=false; }
+  else document.getElementById('err-address').style.display='none';
+
+  if(!valid) return;
+
+  var btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Отправляем...';
+
+  // Generate order number
+  var orderNum = 'BS-' + Date.now().toString().slice(-6);
+
+  var order = {
+    orderNum: orderNum,
+    name: name,
+    phone: phone,
+    email: email,
+    address: address,
+    comment: comment,
+    product: selectedProduct.name,
+    productId: selectedProduct.id,
+    total: selectedProduct.price,
+    shop: 'bardak',
+    status: 'new',
+    ts: Date.now(),
+    createdAt: new Date().toISOString()
+  };
+
+  db.ref('orders').push(order, function(err){
+    if(err){
+      btn.disabled = false;
+      btn.textContent = 'Оформить заказ';
+      alert('Ошибка при отправке. Попробуйте ещё раз.');
+    } else {
+      // Show success
+      document.querySelector('main').querySelectorAll('.card').forEach(function(el){
+        el.style.display='none';
+      });
+      document.getElementById('success-block').style.display='block';
+    }
+  });
+}
+
+function resetForm(){
+  selectedProduct = null;
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-phone').value = '';
+  document.getElementById('f-email').value = '';
+  document.getElementById('f-address').value = '';
+  document.getElementById('f-comment').value = '';
+  document.querySelectorAll('.product-item').forEach(function(el){ el.classList.remove('selected'); });
+  document.querySelector('main').querySelectorAll('.card').forEach(function(el){
+    el.style.display='block';
+  });
+  document.getElementById('success-block').style.display='none';
+}
+</script>
+</body>
+</html>
