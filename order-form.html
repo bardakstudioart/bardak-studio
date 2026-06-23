@@ -540,34 +540,40 @@ function openVarPopup(p){
   document.getElementById('var-popup-title').textContent = p.name;
   renderVarPopup(p);
   document.getElementById('var-overlay').style.display = 'flex';
-  document.getElementById('var-confirm-btn').disabled = true;
-  document.getElementById('var-confirm-btn').style.opacity = '.5';
+  // variant selected on click, no confirm button needed
 }
 
 function renderVarPopup(p){
   var body = document.getElementById('var-popup-body');
-  var variants = p.variants || [];
-  // Group
+  var variants = (p.variants||[]).filter(function(v){ return v; });
+
+  // Group variants
   var groups = {};
+  var groupOrder = [];
   variants.forEach(function(v){
     var g = v.group||'Дизайн';
-    if(!groups[g]) groups[g]=[];
+    if(!groups[g]){ groups[g]=[]; groupOrder.push(g); }
     groups[g].push(v);
   });
+
   body.innerHTML = '';
-  Object.keys(groups).forEach(function(gName){
-    var gl = document.createElement('div');
-    gl.className = 'vg-label';
-    gl.textContent = gName;
-    body.appendChild(gl);
+  groupOrder.forEach(function(gName){
+    if(groupOrder.length > 1){
+      var gl = document.createElement('div');
+      gl.className = 'vg-label';
+      gl.textContent = gName;
+      body.appendChild(gl);
+    }
     var grid = document.createElement('div');
     grid.className = 'vg-grid';
+
     groups[gName].forEach(function(v){
       var unavail = v.availability==='unavailable';
       var div = document.createElement('div');
       div.className = 'vi'+(unavail?' na':'');
-      var isSel = varSelections[gName] && varSelections[gName].id===v.id;
+      var isSel = varSelections['_single'] && varSelections['_single'].id===v.id;
       if(isSel) div.classList.add('on');
+
       if(v.photo){
         var img = document.createElement('img');
         img.src=v.photo; img.alt=v.name;
@@ -579,15 +585,13 @@ function renderVarPopup(p){
       }
       var nm=document.createElement('div'); nm.className='vi-name'; nm.textContent=v.name; div.appendChild(nm);
       var pr=document.createElement('div'); pr.className='vi-price'; pr.textContent=fmt(v.price||p.price||0); div.appendChild(pr);
+
       if(!unavail){
         div.onclick=function(){
-          varSelections[gName]=v;
-          renderVarPopup(p);
-          // Check if all groups selected
-          var allSel = Object.keys(groups).every(function(g){ return varSelections[g]; });
-          var btn=document.getElementById('var-confirm-btn');
-          btn.disabled=!allSel;
-          btn.style.opacity=allSel?'1':'.5';
+          // Select this variant and immediately add to cart
+          addToCart(varPopupProduct, v);
+          closeVarPopupFull();
+          toast('Добавлено в корзину!','ok');
         };
       }
       grid.appendChild(div);
@@ -597,18 +601,8 @@ function renderVarPopup(p){
 }
 
 function confirmVariant(){
-  if(!varPopupProduct) return;
-  // Build combined variant
-  var selVars = Object.values(varSelections);
-  if(!selVars.length) return;
-  // Use last selected for price, combine names
-  var combinedName = selVars.map(function(v){return v.name;}).join(' · ');
-  var price = selVars[selVars.length-1].price || varPopupProduct.price;
-  var photo = selVars[0].photo || null;
-  var combined = {id: selVars.map(function(v){return v.id;}).join('_'), name:combinedName, price:price, photo:photo};
-  addToCart(varPopupProduct, combined);
+  // Not used anymore — click on variant adds directly
   closeVarPopupFull();
-  toast('Добавлено в корзину!','ok');
 }
 
 function closeVarPopup(e){ if(e.target===document.getElementById('var-overlay')) closeVarPopupFull(); }
@@ -646,15 +640,13 @@ function toast(msg){
 <div class="var-overlay" id="var-overlay" style="display:none" onclick="closeVarPopup(event)">
   <div class="var-popup">
     <div class="var-popup-hd">
-      <h3 id="var-popup-title">Выберите вариант</h3>
-      <button onclick="closeVarPopupFull()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">✕</button>
+      <div>
+        <h3 id="var-popup-title">Выберите вариант</h3>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Нажмите на вариант чтобы добавить в корзину</div>
+      </div>
+      <button onclick="closeVarPopupFull()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);flex-shrink:0">✕</button>
     </div>
     <div class="var-popup-body" id="var-popup-body"></div>
-    <div class="var-popup-ft">
-      <button class="submit-btn" id="var-confirm-btn" onclick="confirmVariant()" disabled style="opacity:.5">
-        Выбрать вариант →
-      </button>
-    </div>
   </div>
 </div>
 
