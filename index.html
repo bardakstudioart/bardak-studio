@@ -2312,14 +2312,14 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
 
 /* VARIANTS */
 .var-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:500;display:flex;align-items:center;justify-content:center;padding:1rem}
-.var-modal{background:#fff;border-radius:var(--r);width:100%;max-width:520px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
-.var-modal-hd{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.var-modal{background:#fff;border-radius:var(--r);width:100%;max-width:700px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.var-modal-hd{padding:1rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .var-modal-hd h3{font-family:'Unbounded',sans-serif;font-size:.85rem;font-weight:600}
-.var-modal-body{overflow-y:auto;padding:1rem 1.25rem;flex:1}
+.var-modal-body{overflow-y:auto;padding:1rem 1.5rem;flex:1}
 .var-group-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;margin-top:12px}
 .var-group-lbl:first-child{margin-top:0}
-.var-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
-.var-item{border:2px solid var(--border);border-radius:10px;transition:all .15s;overflow:visible;text-align:center;padding:8px 6px;background:#fff;width:100%}
+.var-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.var-item{border:2px solid var(--border);border-radius:12px;transition:all .15s;overflow:visible;text-align:center;padding:10px 8px;background:#fff;width:100%}
 .var-item:hover{border-color:var(--k);background:var(--kl)}
 .var-item.sel{border-color:var(--k);background:var(--kl)}
 .var-item img{width:64px;height:64px;object-fit:cover;border-radius:6px;display:block;margin:0 auto 4px}
@@ -5244,14 +5244,14 @@ function printEnvelope(order){
 
 /* VARIANTS */
 .var-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:500;display:flex;align-items:center;justify-content:center;padding:1rem}
-.var-modal{background:#fff;border-radius:var(--r);width:100%;max-width:520px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
-.var-modal-hd{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.var-modal{background:#fff;border-radius:var(--r);width:100%;max-width:700px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.var-modal-hd{padding:1rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .var-modal-hd h3{font-family:'Unbounded',sans-serif;font-size:.85rem;font-weight:600}
-.var-modal-body{overflow-y:auto;padding:1rem 1.25rem;flex:1}
+.var-modal-body{overflow-y:auto;padding:1rem 1.5rem;flex:1}
 .var-group-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;margin-top:12px}
 .var-group-lbl:first-child{margin-top:0}
-.var-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
-.var-item{border:2px solid var(--border);border-radius:10px;transition:all .15s;overflow:visible;text-align:center;padding:8px 6px;background:#fff;width:100%}
+.var-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.var-item{border:2px solid var(--border);border-radius:12px;transition:all .15s;overflow:visible;text-align:center;padding:10px 8px;background:#fff;width:100%}
 .var-item:hover{border-color:var(--k);background:var(--kl)}
 .var-item.sel{border-color:var(--k);background:var(--kl)}
 .var-item img{width:64px;height:64px;object-fit:cover;border-radius:6px;display:block;margin:0 auto 4px}
@@ -5483,7 +5483,7 @@ function renderVarModal(p){
       var prInput = document.createElement('input');
       prInput.type = 'number';
       prInput.value = v.price||0;
-      prInput.style.cssText = 'flex:1;min-width:0;font-size:11px;font-weight:700;color:var(--k);border:1.5px solid var(--border);border-radius:6px;padding:3px 4px;text-align:center;font-family:Unbounded,sans-serif;background:#fff;outline:none;width:100%';
+      prInput.style.cssText = 'flex:1;min-width:0;font-size:12px;font-weight:700;color:var(--k);border:1.5px solid var(--border);border-radius:6px;padding:5px 4px;text-align:center;font-family:Unbounded,sans-serif;background:#fff;outline:none;width:100%';
       prInput.onclick = function(e){ e.stopPropagation(); this.style.borderColor='var(--k)'; };
       prInput.onblur = function(){ this.style.borderColor='var(--border)'; };
 
