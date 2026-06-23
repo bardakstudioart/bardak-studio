@@ -5435,42 +5435,72 @@ function renderVarModal(p){
       var div = document.createElement('div');
       div.className = 'var-item'+(unavail?' unavail':'');
 
-      // Photo or placeholder
+      // Photo or placeholder — clickable to upload new photo
+      var photoWrap = document.createElement('div');
+      photoWrap.style.cssText = 'position:relative;width:60px;height:60px;margin:0 auto 4px;cursor:pointer';
+      photoWrap.title = 'Нажмите чтобы изменить фото';
+
       if(v.photo){
         var img = document.createElement('img');
         img.src = v.photo; img.alt = v.name;
-        div.appendChild(img);
+        img.style.cssText = 'width:60px;height:60px;object-fit:cover;border-radius:6px;display:block';
+        photoWrap.appendChild(img);
       } else {
         var ph = document.createElement('div');
-        ph.style.cssText = 'width:60px;height:60px;border-radius:6px;background:var(--bg);display:flex;align-items:center;justify-content:center;margin:0 auto 4px;font-size:1.5rem';
-        ph.textContent = '🎨';
-        div.appendChild(ph);
+        ph.style.cssText = 'width:60px;height:60px;border-radius:6px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:1.5rem;border:2px dashed var(--border)';
+        ph.textContent = '📷';
+        photoWrap.appendChild(ph);
       }
+
+      // Overlay camera icon on hover
+      var overlay = document.createElement('div');
+      overlay.style.cssText = 'position:absolute;bottom:2px;right:2px;background:rgba(0,0,0,0.55);border-radius:4px;padding:1px 3px;font-size:10px;color:#fff;pointer-events:none';
+      overlay.textContent = '📷';
+      photoWrap.appendChild(overlay);
+
+      // Hidden file input for photo change
+      var photoInput = document.createElement('input');
+      photoInput.type = 'file'; photoInput.accept = 'image/*';
+      photoInput.style.cssText = 'position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%';
+      (function(varId, wrap){ // closure to capture varId
+        photoInput.onchange = function(){
+          var f = this.files[0]; if(!f) return;
+          compressImage(f, 400, 0.8, function(compressed){
+            updateVariantPhoto(varId, compressed, wrap);
+          });
+        };
+      })(v.id, photoWrap);
+      photoWrap.appendChild(photoInput);
+
+      div.appendChild(photoWrap);
 
       var nm = document.createElement('div');
       nm.className = 'var-item-name'; nm.textContent = v.name;
       div.appendChild(nm);
 
-      // Editable price
+      // Editable price + save button
       var prWrap = document.createElement('div');
-      prWrap.style.cssText = 'display:flex;align-items:center;gap:3px;justify-content:center;margin-top:2px';
+      prWrap.style.cssText = 'display:flex;align-items:center;gap:2px;justify-content:center;margin-top:2px';
       var prInput = document.createElement('input');
       prInput.type = 'number';
       prInput.value = v.price||0;
-      prInput.style.cssText = 'width:60px;font-size:10px;font-weight:700;color:var(--k);border:1px solid transparent;border-radius:5px;padding:1px 4px;text-align:center;font-family:Unbounded,sans-serif;background:transparent;outline:none';
-      prInput.title = 'Нажмите чтобы изменить цену';
-      prInput.onfocus = function(){ this.style.borderColor='var(--k)';this.style.background='#fff'; };
-      prInput.onblur = function(){
-        this.style.borderColor='transparent';this.style.background='transparent';
-        var newPrice = parseFloat(this.value)||0;
-        if(newPrice !== v.price){
-          updateVariantPrice(v.id, newPrice);
-        }
-      };
-      prInput.onkeydown = function(e){ if(e.key==='Enter') this.blur(); };
+      prInput.style.cssText = 'width:55px;font-size:10px;font-weight:700;color:var(--k);border:1px solid var(--border);border-radius:5px;padding:1px 4px;text-align:center;font-family:Unbounded,sans-serif;background:#fff;outline:none';
       prInput.onclick = function(e){ e.stopPropagation(); };
+      var saveBtn = document.createElement('button');
+      saveBtn.textContent = '💾';
+      saveBtn.title = 'Сохранить цену';
+      saveBtn.style.cssText = 'font-size:11px;padding:1px 4px;border-radius:5px;border:1px solid var(--k);background:var(--kl);cursor:pointer;line-height:1.4';
+      (function(varId, inp){
+        saveBtn.onclick = function(e){
+          e.stopPropagation();
+          var newPrice = parseFloat(inp.value)||0;
+          updateVariantPrice(varId, newPrice);
+        };
+        inp.onkeydown = function(e){ if(e.key==='Enter'){ e.preventDefault(); saveBtn.click(); } };
+      })(v.id, prInput);
       prWrap.appendChild(prInput);
-      prWrap.innerHTML += '<span style="font-size:9px;color:var(--k)">₩</span>';
+      prWrap.innerHTML += '<span style="font-size:9px;color:var(--k);margin:0 1px">₩</span>';
+      prWrap.appendChild(saveBtn);
       div.appendChild(prWrap);
 
       var row = document.createElement('div');
@@ -5586,6 +5616,25 @@ function updateVariantAvail(varId, avail){
   });
 }
 
+function updateVariantPhoto(varId, photoData, wrapEl){
+  if(!currentVarProduct) return;
+  db.ref('products/'+currentVarProduct.fbKey+'/variants').once('value', function(snap){
+    var variants = snap.val() ? (Array.isArray(snap.val()) ? snap.val() : Object.values(snap.val()).filter(Boolean)) : [];
+    var v = variants.find(function(x){ return x && x.id===varId; });
+    if(v){ v.photo = photoData; }
+    db.ref('products/'+currentVarProduct.fbKey).update({variants: variants}, function(){
+      currentVarProduct.variants = variants;
+      // Update photo in-place without full re-render
+      var oldEl = wrapEl.querySelector('img, div[style*="dashed"]');
+      if(oldEl) wrapEl.removeChild(oldEl);
+      var img = document.createElement('img');
+      img.src = photoData; img.alt = '';
+      img.style.cssText = 'width:60px;height:60px;object-fit:cover;border-radius:6px;display:block';
+      wrapEl.insertBefore(img, wrapEl.firstChild);
+      toast('Фото обновлено','ok');
+    });
+  });
+}
 
 // ===== NEW PRODUCT VARIANTS =====
 var newVariants = [];
