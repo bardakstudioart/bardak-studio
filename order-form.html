@@ -15,12 +15,14 @@
   --text:#2C2C2C;--muted:#999;--danger:#E24B4A;--r:16px;
   --gold:#B8952A;--goldl:#FEF6E4;
 }
-body{font-family:'Nunito',sans-serif;background:transparent;color:var(--text);min-height:100vh;font-size:15px}
+body{font-family:'Nunito',sans-serif;background:transparent;color:var(--text);font-size:15px;height:100vh;overflow:hidden;display:flex;flex-direction:column}
 .header{display:none}
-.main{max-width:680px;margin:0 auto;padding:.75rem}
+.main{flex:1;display:flex;gap:1rem;padding:.75rem;overflow:hidden;max-width:1100px;margin:0 auto;width:100%}
+.catalog-col{flex:1;overflow-y:auto;padding-right:.5rem}
+.cart-col{width:300px;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden}
 
 /* STEPS */
-.steps{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:1.5rem}
+.steps{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:1rem}
 .step{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted);padding:6px 12px;border-radius:20px;transition:all .2s}
 .step.active{background:var(--text);color:white}
 .step.done{background:var(--kl);color:var(--k2)}
@@ -121,6 +123,15 @@ body{font-family:'Nunito',sans-serif;background:transparent;color:var(--text);mi
 .vi.na{opacity:.4;cursor:not-allowed}
 .vi.na:hover{transform:none;box-shadow:none;border-color:rgba(0,0,0,0.08)}
 .var-popup-ft{padding:1rem 1.25rem;border-top:1px solid rgba(0,0,0,0.07);flex-shrink:0}
+@media(max-width:600px){
+  .main{flex-direction:column;overflow:auto;height:auto}
+  .cart-col{width:100%;min-height:200px}
+  .catalog-col{overflow:visible}
+  body{height:auto;overflow:auto}
+}
+@media(min-width:601px){
+  .steps{display:none}
+}
 </style>
 </head>
 <body>
@@ -172,8 +183,8 @@ body{font-family:'Nunito',sans-serif;background:transparent;color:var(--text);mi
     </div>
   </div>
 
-  <!-- PAGE 2: CONTACT FORM -->
-  <div class="page" id="page-form">
+    <!-- PAGE 2: CONTACT FORM -->
+    <div class="page" id="page-form">
     <div class="card">
       <div class="card-hd">
         <h3>📋 Ваши данные</h3>
@@ -212,8 +223,8 @@ body{font-family:'Nunito',sans-serif;background:transparent;color:var(--text);mi
     </div>
   </div>
 
-  <!-- PAGE 3: PAYMENT -->
-  <div class="page" id="page-payment">
+    <!-- PAGE 3: PAYMENT -->
+    <div class="page" id="page-payment">
     <div class="card">
       <div class="card-hd"><h3>💳 Оплата через тонжан</h3></div>
       <div class="card-body">
@@ -249,8 +260,8 @@ body{font-family:'Nunito',sans-serif;background:transparent;color:var(--text);mi
     </div>
   </div>
 
-  <!-- PAGE 4: SUCCESS -->
-  <div class="page" id="page-success">
+    <!-- PAGE 4: SUCCESS -->
+    <div class="page" id="page-success">
     <div class="card">
       <div class="success">
         <div class="success-icon">🎉</div>
@@ -490,6 +501,9 @@ function copyAmount(){
 function showPage(name){
   document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('on'); });
   document.getElementById('page-'+name).classList.add('on');
+  // Hide steps on payment/success
+  var steps = document.getElementById('steps-bar');
+  if(steps) steps.style.display = (name==='payment'||name==='success') ? 'none' : 'flex';
   // Update steps
   var stepMap = {catalog:1, form:2, payment:3, success:3};
   var current = stepMap[name]||1;

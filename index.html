@@ -2564,6 +2564,42 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
       </div>
       <button class="btn pri" onclick="addProduct()">+ Добавить</button>
     </div>
+
+    <!-- Варианты при создании -->
+    <div style="padding:0 1.25rem 1rem">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Варианты (необязательно)</div>
+        <button class="btn sm" onclick="toggleNewVariantsPanel()" id="var-toggle-btn">+ Добавить варианты</button>
+      </div>
+      <div id="new-variants-panel" style="display:none">
+        <div style="background:var(--bg);border-radius:10px;padding:.75rem;margin-bottom:8px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:3px">Группа</div>
+              <input class="fi" id="nv-group" placeholder="Дизайн" style="width:110px">
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:3px">Название</div>
+              <input class="fi" id="nv-name" placeholder="Котик ENFP" style="width:140px">
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:3px">Цена ₩</div>
+              <input class="fi" id="nv-price" type="number" placeholder="1500" style="width:85px">
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:3px">Фото</div>
+              <label class="btn sm" style="cursor:pointer">📷<input type="file" id="nv-photo" accept="image/*" style="display:none" onchange="previewNewVariantPhoto(this)"></label>
+            </div>
+            <button class="btn sm grn" onclick="addNewVariant()">+ Добавить</button>
+          </div>
+          <div id="nv-photo-preview" style="display:none;margin-bottom:8px">
+            <img id="nv-photo-img" style="width:50px;height:50px;object-fit:cover;border-radius:7px;border:1px solid var(--border)">
+            <button class="btn sm" style="margin-left:6px" onclick="clearNewVariantPhoto()">✕</button>
+          </div>
+          <div id="new-variants-list" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+        </div>
+      </div>
+    </div>
   </div>
   <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
     <button class="btn" onclick="printLabels()">🖨 Этикетки</button>
@@ -5500,6 +5536,131 @@ function updateVariantAvail(varId, avail){
     toast('Статус варианта обновлён','ok');
   });
 }
+
+
+// ===== NEW PRODUCT VARIANTS =====
+var newVariants = [];
+var newVariantPhotoData = null;
+
+function toggleNewVariantsPanel(){
+  var panel = document.getElementById('new-variants-panel');
+  var btn = document.getElementById('var-toggle-btn');
+  var isHidden = panel.style.display === 'none';
+  panel.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '− Скрыть варианты' : '+ Добавить варианты';
+}
+
+function previewNewVariantPhoto(input){
+  var f = input.files[0]; if(!f) return;
+  compressImage(f, 400, 0.8, function(compressed){
+    newVariantPhotoData = compressed;
+    document.getElementById('nv-photo-img').src = compressed;
+    document.getElementById('nv-photo-preview').style.display = 'flex';
+    document.getElementById('nv-photo-preview').style.alignItems = 'center';
+  });
+}
+
+function clearNewVariantPhoto(){
+  newVariantPhotoData = null;
+  document.getElementById('nv-photo-preview').style.display = 'none';
+  document.getElementById('nv-photo').value = '';
+}
+
+function addNewVariant(){
+  var name = document.getElementById('nv-name').value.trim();
+  var price = parseFloat(document.getElementById('nv-price').value)||0;
+  var group = document.getElementById('nv-group').value.trim()||'Дизайн';
+  if(!name){ toast('Введите название варианта','err'); return; }
+
+  newVariants.push({
+    id: 'V'+Date.now()+'_'+newVariants.length,
+    name: name,
+    price: price,
+    group: group,
+    photo: newVariantPhotoData||null,
+    availability: 'available'
+  });
+
+  // Clear inputs
+  document.getElementById('nv-name').value = '';
+  document.getElementById('nv-price').value = '';
+  clearNewVariantPhoto();
+  renderNewVariantsList();
+  toast('Вариант добавлен','ok');
+}
+
+function removeNewVariant(idx){
+  newVariants.splice(idx, 1);
+  renderNewVariantsList();
+}
+
+function renderNewVariantsList(){
+  var el = document.getElementById('new-variants-list');
+  if(!newVariants.length){
+    el.innerHTML = '<div style="font-size:12px;color:var(--muted)">Варианты появятся здесь</div>';
+    return;
+  }
+  el.innerHTML = '';
+  newVariants.forEach(function(v, i){
+    var div = document.createElement('div');
+    div.style.cssText = 'display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--border);border-radius:8px;padding:5px 8px;font-size:12px';
+    div.innerHTML =
+      (v.photo?'<img src="'+v.photo+'" style="width:28px;height:28px;object-fit:cover;border-radius:5px">':'')+
+      '<div><div style="font-weight:700">'+v.name+'</div><div style="color:var(--muted);font-size:10px">'+v.group+' · '+fmt(v.price)+'</div></div>';
+    var del = document.createElement('button');
+    del.className = 'btn ic';
+    del.style.cssText = 'width:22px;height:22px;color:var(--muted);margin-left:auto;flex-shrink:0';
+    del.textContent = '✕';
+    del.onclick = function(){ removeNewVariant(i); };
+    div.appendChild(del);
+    el.appendChild(div);
+  });
+}
+
+// Override addProduct to include variants
+var _origAddProduct2 = addProduct;
+addProduct = function(){
+  var name = document.getElementById('new-name').value.trim();
+  var price = parseFloat(document.getElementById('new-price').value)||0;
+  var owner = document.getElementById('new-owner').value;
+  if(!name) return;
+
+  var photoInput = document.getElementById('new-photo');
+  var file = photoInput && photoInput.files[0];
+
+  function saveProduct(photo){
+    var id = 'P'+String(Date.now()).slice(-6);
+    var productData = {id:id, name:name, price:price, owner:owner, brought:0, sold:0};
+    if(photo) productData.photo = photo;
+    if(newVariants.length) productData.variants = newVariants;
+
+    db.ref('products').push(productData);
+    document.getElementById('new-name').value = '';
+    document.getElementById('new-price').value = '';
+    if(photoInput) photoInput.value = '';
+    var nameEl = document.getElementById('new-photo-name');
+    if(nameEl) nameEl.textContent = '';
+
+    // Reset variants
+    newVariants = [];
+    renderNewVariantsList();
+    document.getElementById('new-variants-panel').style.display = 'none';
+    document.getElementById('var-toggle-btn').textContent = '+ Добавить варианты';
+
+    toast('Товар добавлен'+(newVariants.length?' с вариантами':''),'ok');
+  }
+
+  if(file){
+    compressImage(file, 600, 0.8, function(compressed){ saveProduct(compressed); });
+  } else {
+    saveProduct(null);
+  }
+};
+
+// Init new variants list on load
+setTimeout(function(){
+  renderNewVariantsList();
+}, 500);
 
 </script>
 </body>
