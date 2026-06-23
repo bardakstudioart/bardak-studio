@@ -10,16 +10,14 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --k:#1D9E75;--kl:#E1F5EE;--k2:#0F6E56;
-  --bg:#F7F5F0;--surface:#fff;--border:rgba(0,0,0,0.09);
-  --text:#1A1A1A;--muted:#888;--danger:#E24B4A;--r:14px;
+  --k:#1D9E75;--kl:#E8F5F0;--k2:#0F6E56;
+  --bg:transparent;--surface:rgba(255,255,255,0.85);--border:rgba(0,0,0,0.08);
+  --text:#2C2C2C;--muted:#999;--danger:#E24B4A;--r:16px;
   --gold:#B8952A;--goldl:#FEF6E4;
 }
-body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px}
-.header{background:var(--text);color:#fff;padding:1.25rem 1.5rem;text-align:center;position:sticky;top:0;z-index:100}
-.logo{font-family:'Unbounded',sans-serif;font-size:1.1rem;font-weight:700}
-.logo span{color:#9FE1CB}
-.main{max-width:680px;margin:0 auto;padding:1.25rem}
+body{font-family:'Nunito',sans-serif;background:transparent;color:var(--text);min-height:100vh;font-size:15px}
+.header{display:none}
+.main{max-width:680px;margin:0 auto;padding:.75rem}
 
 /* STEPS */
 .steps{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:1.5rem}
@@ -29,9 +27,9 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
 .step-sep{width:24px;height:2px;background:var(--border);flex-shrink:0}
 
 /* CARDS */
-.card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);margin-bottom:1rem;overflow:hidden}
-.card-hd{padding:.9rem 1.25rem;border-bottom:1px solid var(--border);background:#FAFAF8;display:flex;align-items:center;justify-content:space-between}
-.card-hd h3{font-family:'Unbounded',sans-serif;font-size:.8rem;font-weight:600}
+.card{background:rgba(255,255,255,0.9);border-radius:var(--r);border:1px solid rgba(0,0,0,0.06);margin-bottom:1rem;overflow:hidden;backdrop-filter:blur(10px)}
+.card-hd{padding:.9rem 1.25rem;border-bottom:1px solid rgba(0,0,0,0.06);background:rgba(255,255,255,0.5);display:flex;align-items:center;justify-content:space-between}
+.card-hd h3{font-family:'Nunito',sans-serif;font-size:.9rem;font-weight:700;color:var(--text)}
 .card-body{padding:1.25rem}
 
 /* CATALOG */
@@ -39,8 +37,8 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
 .cat-btn{font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:white;cursor:pointer;transition:all .15s}
 .cat-btn.on{background:var(--text);color:white;border-color:var(--text)}
 .product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
-.product-item{border:2px solid var(--border);border-radius:12px;overflow:hidden;cursor:pointer;transition:all .2s;background:white;position:relative}
-.product-item:hover{border-color:var(--k);transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.08)}
+.product-item{border:2px solid rgba(0,0,0,0.06);border-radius:14px;overflow:hidden;cursor:pointer;transition:all .2s;background:white;position:relative;box-shadow:0 2px 8px rgba(0,0,0,0.04)}
+.product-item:hover{border-color:var(--k);transform:translateY(-3px);box-shadow:0 6px 20px rgba(29,158,117,0.15)}
 .product-img{width:100%;height:120px;object-fit:cover;background:#f5f5f5;display:flex;align-items:center;justify-content:center;font-size:2.5rem}
 .product-img img{width:100%;height:100%;object-fit:cover}
 .product-info{padding:.6rem .75rem}
@@ -293,8 +291,8 @@ function renderCatalog(){
   grid.innerHTML = '';
   list.forEach(function(p){
     var avail = p.availability || 'available';
-    // Skip unavailable
-    if(avail === 'unavailable') return;
+    // Only show available and preorder items
+    if(avail === 'unavailable' || avail === 'coming_soon') return;
 
     var qty = cart[p.id] ? cart[p.id].qty : 0;
     var isOrderable = avail === 'available' || avail === 'preorder';
