@@ -15,11 +15,11 @@
   --text:#2C2C2C;--muted:#999;--danger:#E24B4A;--r:16px;
   --gold:#B8952A;--goldl:#FEF6E4;
 }
-body{font-family:'Nunito',sans-serif;background:transparent;color:var(--text);font-size:15px;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+body{font-family:'Nunito',sans-serif;background:transparent;color:var(--text);font-size:15px;overflow-y:auto;overflow-x:hidden}
 .header{display:none}
-.main{flex:1;display:flex;gap:1rem;padding:.75rem;overflow:hidden;width:100%;max-width:950px;margin:0 auto}
-.catalog-col{flex:1;min-width:0;overflow-y:auto;padding-right:.5rem}
-.cart-col{width:280px;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden}
+.main{display:flex;gap:1rem;padding:.75rem;width:100%;max-width:950px;margin:0 auto;align-items:flex-start}
+.catalog-col{flex:1;min-width:0}
+.cart-col{width:280px;flex-shrink:0;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow-y:auto}
 
 /* STEPS */
 .steps{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:1rem}
