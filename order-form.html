@@ -102,6 +102,25 @@ body{font-family:'Nunito',sans-serif;background:transparent;color:var(--text);mi
 
 /* PAGES */
 .page{display:none}.page.on{display:block}
+/* VARIANTS POPUP */
+.var-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem}
+.var-popup{background:#fff;border-radius:18px;width:100%;max-width:480px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.var-popup-hd{padding:1rem 1.25rem;border-bottom:1px solid rgba(0,0,0,0.07);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.var-popup-hd h3{font-size:.95rem;font-weight:700}
+.var-popup-body{overflow-y:auto;padding:1rem 1.25rem}
+.vg-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;margin-top:14px}
+.vg-label:first-child{margin-top:0}
+.vg-grid{display:flex;gap:8px;flex-wrap:wrap}
+.vi{border:2px solid rgba(0,0,0,0.08);border-radius:12px;cursor:pointer;transition:all .15s;overflow:hidden;text-align:center;padding:8px;background:#fff;min-width:85px;flex:0 0 auto}
+.vi:hover{border-color:var(--k);transform:translateY(-2px);box-shadow:0 4px 12px rgba(29,158,117,0.15)}
+.vi.on{border-color:var(--k);background:var(--kl)}
+.vi img{width:65px;height:65px;object-fit:cover;border-radius:8px;display:block;margin:0 auto 5px}
+.vi-ph{width:65px;height:65px;border-radius:8px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;margin:0 auto 5px;font-size:1.8rem}
+.vi-name{font-size:11px;font-weight:700;color:var(--text);line-height:1.3}
+.vi-price{font-size:10px;color:var(--k);font-weight:700;margin-top:2px}
+.vi.na{opacity:.4;cursor:not-allowed}
+.vi.na:hover{transform:none;box-shadow:none;border-color:rgba(0,0,0,0.08)}
+.var-popup-ft{padding:1rem 1.25rem;border-top:1px solid rgba(0,0,0,0.07);flex-shrink:0}
 </style>
 </head>
 <body>
@@ -323,9 +342,12 @@ function renderCatalog(){
   });
 }
 
-function addToCart(p){
-  if(cart[p.id]){ cart[p.id].qty++; }
-  else { cart[p.id] = {product:p, qty:1}; }
+function addToCart(p, variant){
+  var key = variant ? p.id+'__'+variant.id : p.id;
+  var displayName = variant ? p.name+' ('+variant.name+')' : p.name;
+  var price = variant ? (variant.price||p.price) : p.price;
+  if(cart[key]){ cart[key].qty++; }
+  else { cart[key] = {product:p, variant:variant, key:key, displayName:displayName, price:price, qty:1}; }
   renderCatalog();
   renderCart();
 }
@@ -358,21 +380,21 @@ function renderCart(){
     var row = document.createElement('div');
     row.className = 'cart-item';
     row.innerHTML =
-      '<div class="cart-name">'+i.product.name+'</div>'+
+      '<div class="cart-name">'+(i.displayName||i.product.name)+'</div>'+
       '<div class="qty-ctrl">'+
         '<button class="qty-btn">−</button>'+
         '<span class="qty-num">'+i.qty+'</span>'+
         '<button class="qty-btn">+</button>'+
       '</div>'+
-      '<div class="cart-price">'+fmt(i.product.price * i.qty)+'</div>';
+      '<div class="cart-price">'+fmt((i.price||i.product.price) * i.qty)+'</div>';
 
     var btns = row.querySelectorAll('.qty-btn');
     btns[0].onclick = function(){
-      cart[i.product.id].qty--;
-      if(cart[i.product.id].qty <= 0) delete cart[i.product.id];
+      cart[i.key||i.product.id].qty--;
+      if(cart[i.key||i.product.id].qty <= 0) delete cart[i.key||i.product.id];
       renderCatalog(); renderCart();
     };
-    btns[1].onclick = function(){ cart[i.product.id].qty++; renderCatalog(); renderCart(); };
+    btns[1].onclick = function(){ cart[i.key||i.product.id].qty++; renderCatalog(); renderCart(); };
     itemsEl.appendChild(row);
   });
 }
@@ -385,7 +407,7 @@ function goToForm(){
   var summary = items.map(function(i){
     return i.product.name + (i.qty>1?' × '+i.qty:'') + ' — ' + fmt(i.product.price*i.qty);
   }).join('<br>');
-  var total = items.reduce(function(a,i){ return a+i.product.price*i.qty; },0);
+  var total = items.reduce(function(a,i){ return a+(i.price||i.product.price)*i.qty; },0);
   document.getElementById('form-summary').innerHTML =
     summary + '<hr style="margin:.5rem 0;border:none;border-top:1px solid rgba(0,0,0,0.1)">'+
     '<b>Итого: '+fmt(total)+'</b>';
@@ -412,9 +434,9 @@ function submitOrder(){
   if(!valid) return;
 
   var items = Object.values(cart).filter(function(i){ return i.qty>0; });
-  var total = items.reduce(function(a,i){ return a+i.product.price*i.qty; },0);
+  var total = items.reduce(function(a,i){ return a+(i.price||i.product.price)*i.qty; },0);
   var orderNum = 'BS-' + Date.now().toString().slice(-6);
-  var productStr = items.map(function(i){ return i.product.name+(i.qty>1?' x'+i.qty:''); }).join(', ');
+  var productStr = items.map(function(i){ return (i.displayName||i.product.name)+(i.qty>1?' x'+i.qty:''); }).join(', ');
 
   var hasPreorder = items.some(function(i){ return i.product.availability==='preorder'; });
   currentOrder = {
@@ -459,7 +481,7 @@ function copyAccount(){
 }
 function copyAmount(){
   var items = Object.values(cart).filter(function(i){ return i.qty>0; });
-  var total = items.reduce(function(a,i){ return a+i.product.price*i.qty; },0);
+  var total = items.reduce(function(a,i){ return a+(i.price||i.product.price)*i.qty; },0);
   navigator.clipboard.writeText(String(total)).then(function(){
     toast('Сумма скопирована!');
   });
@@ -477,6 +499,91 @@ function showPage(name){
   });
   window.scrollTo({top:0, behavior:'smooth'});
 }
+
+
+// ── VARIANTS POPUP ──────────────────────────────────
+var varPopupProduct = null;
+var varSelections = {}; // groupName -> variant
+
+function openVarPopup(p){
+  varPopupProduct = p;
+  varSelections = {};
+  document.getElementById('var-popup-title').textContent = p.name;
+  renderVarPopup(p);
+  document.getElementById('var-overlay').style.display = 'flex';
+  document.getElementById('var-confirm-btn').disabled = true;
+  document.getElementById('var-confirm-btn').style.opacity = '.5';
+}
+
+function renderVarPopup(p){
+  var body = document.getElementById('var-popup-body');
+  var variants = p.variants || [];
+  // Group
+  var groups = {};
+  variants.forEach(function(v){
+    var g = v.group||'Дизайн';
+    if(!groups[g]) groups[g]=[];
+    groups[g].push(v);
+  });
+  body.innerHTML = '';
+  Object.keys(groups).forEach(function(gName){
+    var gl = document.createElement('div');
+    gl.className = 'vg-label';
+    gl.textContent = gName;
+    body.appendChild(gl);
+    var grid = document.createElement('div');
+    grid.className = 'vg-grid';
+    groups[gName].forEach(function(v){
+      var unavail = v.availability==='unavailable';
+      var div = document.createElement('div');
+      div.className = 'vi'+(unavail?' na':'');
+      var isSel = varSelections[gName] && varSelections[gName].id===v.id;
+      if(isSel) div.classList.add('on');
+      if(v.photo){
+        var img = document.createElement('img');
+        img.src=v.photo; img.alt=v.name;
+        div.appendChild(img);
+      } else {
+        var ph = document.createElement('div');
+        ph.className='vi-ph'; ph.textContent='🎨';
+        div.appendChild(ph);
+      }
+      var nm=document.createElement('div'); nm.className='vi-name'; nm.textContent=v.name; div.appendChild(nm);
+      var pr=document.createElement('div'); pr.className='vi-price'; pr.textContent=fmt(v.price||p.price||0); div.appendChild(pr);
+      if(!unavail){
+        div.onclick=function(){
+          varSelections[gName]=v;
+          renderVarPopup(p);
+          // Check if all groups selected
+          var allSel = Object.keys(groups).every(function(g){ return varSelections[g]; });
+          var btn=document.getElementById('var-confirm-btn');
+          btn.disabled=!allSel;
+          btn.style.opacity=allSel?'1':'.5';
+        };
+      }
+      grid.appendChild(div);
+    });
+    body.appendChild(grid);
+  });
+}
+
+function confirmVariant(){
+  if(!varPopupProduct) return;
+  // Build combined variant
+  var selVars = Object.values(varSelections);
+  if(!selVars.length) return;
+  // Use last selected for price, combine names
+  var combinedName = selVars.map(function(v){return v.name;}).join(' · ');
+  var price = selVars[selVars.length-1].price || varPopupProduct.price;
+  var photo = selVars[0].photo || null;
+  var combined = {id: selVars.map(function(v){return v.id;}).join('_'), name:combinedName, price:price, photo:photo};
+  addToCart(varPopupProduct, combined);
+  closeVarPopupFull();
+  toast('Добавлено в корзину!','ok');
+}
+
+function closeVarPopup(e){ if(e.target===document.getElementById('var-overlay')) closeVarPopupFull(); }
+function closeVarPopupFull(){ document.getElementById('var-overlay').style.display='none'; varPopupProduct=null; varSelections={}; }
 
 function resetAll(){
   cart = {};
@@ -505,5 +612,22 @@ function toast(msg){
   toastTimer = setTimeout(function(){ el.style.opacity='0'; }, 2000);
 }
 </script>
+
+<!-- VARIANTS POPUP -->
+<div class="var-overlay" id="var-overlay" style="display:none" onclick="closeVarPopup(event)">
+  <div class="var-popup">
+    <div class="var-popup-hd">
+      <h3 id="var-popup-title">Выберите вариант</h3>
+      <button onclick="closeVarPopupFull()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">✕</button>
+    </div>
+    <div class="var-popup-body" id="var-popup-body"></div>
+    <div class="var-popup-ft">
+      <button class="submit-btn" id="var-confirm-btn" onclick="confirmVariant()" disabled style="opacity:.5">
+        Выбрать вариант →
+      </button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
