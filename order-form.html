@@ -352,7 +352,14 @@ function renderCatalog(){
     if(qty>0) div.style.borderColor = 'var(--k)';
 
     if(isOrderable){
-      div.onclick = function(){ addToCart(p); };
+      div.onclick = function(){
+        var variants = (p.variants||[]).filter(function(v){ return v && v.availability!=='unavailable'; });
+        if(variants.length > 0){
+          openVarPopup(p);
+        } else {
+          addToCart(p);
+        }
+      };
     }
     grid.appendChild(div);
   });
