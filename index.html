@@ -5451,9 +5451,27 @@ function renderVarModal(p){
       nm.className = 'var-item-name'; nm.textContent = v.name;
       div.appendChild(nm);
 
-      var pr = document.createElement('div');
-      pr.className = 'var-item-price'; pr.textContent = fmt(v.price||0);
-      div.appendChild(pr);
+      // Editable price
+      var prWrap = document.createElement('div');
+      prWrap.style.cssText = 'display:flex;align-items:center;gap:3px;justify-content:center;margin-top:2px';
+      var prInput = document.createElement('input');
+      prInput.type = 'number';
+      prInput.value = v.price||0;
+      prInput.style.cssText = 'width:60px;font-size:10px;font-weight:700;color:var(--k);border:1px solid transparent;border-radius:5px;padding:1px 4px;text-align:center;font-family:Unbounded,sans-serif;background:transparent;outline:none';
+      prInput.title = 'Нажмите чтобы изменить цену';
+      prInput.onfocus = function(){ this.style.borderColor='var(--k)';this.style.background='#fff'; };
+      prInput.onblur = function(){
+        this.style.borderColor='transparent';this.style.background='transparent';
+        var newPrice = parseFloat(this.value)||0;
+        if(newPrice !== v.price){
+          updateVariantPrice(v.id, newPrice);
+        }
+      };
+      prInput.onkeydown = function(e){ if(e.key==='Enter') this.blur(); };
+      prInput.onclick = function(e){ e.stopPropagation(); };
+      prWrap.appendChild(prInput);
+      prWrap.innerHTML += '<span style="font-size:9px;color:var(--k)">₩</span>';
+      div.appendChild(prWrap);
 
       var row = document.createElement('div');
       row.style.cssText = 'display:flex;gap:4px;margin-top:5px;justify-content:center';
@@ -5523,6 +5541,17 @@ function deleteVariant(varId){
     currentVarProduct.variants = variants;
     renderVarModal(currentVarProduct);
     toast('Вариант удалён');
+  });
+}
+
+function updateVariantPrice(varId, price){
+  if(!currentVarProduct) return;
+  var variants = JSON.parse(JSON.stringify(currentVarProduct.variants||[]));
+  var v = variants.find(function(x){ return x.id===varId; });
+  if(v){ v.price = price; }
+  db.ref('products/'+currentVarProduct.fbKey).update({variants: variants}, function(){
+    currentVarProduct.variants = variants;
+    toast('Цена варианта обновлена','ok');
   });
 }
 
