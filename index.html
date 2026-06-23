@@ -5511,7 +5511,6 @@ function addVariant(){
 
   if(!name){ toast('Введите название варианта','err'); return; }
 
-  var variants = currentVarProduct.variants ? JSON.parse(JSON.stringify(currentVarProduct.variants)) : [];
   var newVar = {
     id: 'V'+Date.now(),
     name: name,
@@ -5520,49 +5519,70 @@ function addVariant(){
     availability: avail,
     photo: varPhotoData || null
   };
-  variants.push(newVar);
 
-  db.ref('products/'+currentVarProduct.fbKey).update({variants: variants}, function(){
-    currentVarProduct.variants = variants;
-    renderVarModal(currentVarProduct);
-    document.getElementById('var-name').value = '';
-    document.getElementById('var-price').value = currentVarProduct.price||'';
-    document.getElementById('var-photo-preview').style.display = 'none';
-    document.getElementById('var-photo').value = '';
-    varPhotoData = null;
-    toast('Вариант добавлен','ok');
+  // Always fetch fresh data from Firebase before adding
+  db.ref('products/'+currentVarProduct.fbKey+'/variants').once('value', function(snap){
+    var freshVariants = [];
+    if(snap.val()){
+      // variants stored as array
+      if(Array.isArray(snap.val())){
+        freshVariants = snap.val();
+      } else {
+        // stored as object
+        Object.values(snap.val()).forEach(function(v){ if(v) freshVariants.push(v); });
+      }
+    }
+    freshVariants.push(newVar);
+
+    db.ref('products/'+currentVarProduct.fbKey).update({variants: freshVariants}, function(){
+      currentVarProduct.variants = freshVariants;
+      renderVarModal(currentVarProduct);
+      document.getElementById('var-name').value = '';
+      document.getElementById('var-price').value = currentVarProduct.price||'';
+      document.getElementById('var-photo-preview').style.display = 'none';
+      document.getElementById('var-photo').value = '';
+      varPhotoData = null;
+      toast('Вариант добавлен','ok');
+    });
   });
 }
 
 function deleteVariant(varId){
   if(!currentVarProduct || !confirm('Удалить вариант?')) return;
-  var variants = (currentVarProduct.variants||[]).filter(function(v){ return v.id!==varId; });
-  db.ref('products/'+currentVarProduct.fbKey).update({variants: variants}, function(){
-    currentVarProduct.variants = variants;
-    renderVarModal(currentVarProduct);
-    toast('Вариант удалён');
+  db.ref('products/'+currentVarProduct.fbKey+'/variants').once('value', function(snap){
+    var variants = snap.val() ? (Array.isArray(snap.val()) ? snap.val() : Object.values(snap.val()).filter(Boolean)) : [];
+    variants = variants.filter(function(v){ return v && v.id!==varId; });
+    db.ref('products/'+currentVarProduct.fbKey).update({variants: variants}, function(){
+      currentVarProduct.variants = variants;
+      renderVarModal(currentVarProduct);
+      toast('Вариант удалён');
+    });
   });
 }
 
 function updateVariantPrice(varId, price){
   if(!currentVarProduct) return;
-  var variants = JSON.parse(JSON.stringify(currentVarProduct.variants||[]));
-  var v = variants.find(function(x){ return x.id===varId; });
-  if(v){ v.price = price; }
-  db.ref('products/'+currentVarProduct.fbKey).update({variants: variants}, function(){
-    currentVarProduct.variants = variants;
-    toast('Цена варианта обновлена','ok');
+  db.ref('products/'+currentVarProduct.fbKey+'/variants').once('value', function(snap){
+    var variants = snap.val() ? (Array.isArray(snap.val()) ? snap.val() : Object.values(snap.val()).filter(Boolean)) : [];
+    var v = variants.find(function(x){ return x && x.id===varId; });
+    if(v){ v.price = price; }
+    db.ref('products/'+currentVarProduct.fbKey).update({variants: variants}, function(){
+      currentVarProduct.variants = variants;
+      toast('Цена обновлена','ok');
+    });
   });
 }
 
 function updateVariantAvail(varId, avail){
   if(!currentVarProduct) return;
-  var variants = JSON.parse(JSON.stringify(currentVarProduct.variants||[]));
-  var v = variants.find(function(x){ return x.id===varId; });
-  if(v){ v.availability = avail; }
-  db.ref('products/'+currentVarProduct.fbKey).update({variants: variants}, function(){
-    currentVarProduct.variants = variants;
-    toast('Статус варианта обновлён','ok');
+  db.ref('products/'+currentVarProduct.fbKey+'/variants').once('value', function(snap){
+    var variants = snap.val() ? (Array.isArray(snap.val()) ? snap.val() : Object.values(snap.val()).filter(Boolean)) : [];
+    var v = variants.find(function(x){ return x && x.id===varId; });
+    if(v){ v.availability = avail; }
+    db.ref('products/'+currentVarProduct.fbKey).update({variants: variants}, function(){
+      currentVarProduct.variants = variants;
+      toast('Статус обновлён','ok');
+    });
   });
 }
 
