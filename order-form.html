@@ -21,9 +21,14 @@ body{font-family:'Nunito',sans-serif;background:transparent;color:var(--text);fo
 .catalog-col{flex:1;min-width:0}
 .cart-col{display:none}
 
-/* === INLINE CART (shown below catalog when items added) === */
+/* === INLINE CART === */
 #inline-cart{display:none;margin-top:.75rem}
 #inline-cart.visible{display:block}
+#cart-body-wrap{overflow:hidden;max-height:0;transition:max-height .3s ease}
+#cart-body-wrap.open{max-height:1000px}
+#inline-cart .card-hd{cursor:pointer;user-select:none}
+#inline-cart .card-hd:hover{background:rgba(245,255,250,0.95)}
+#cart-toggle-icon{font-size:14px;color:var(--muted)}
 
 /* STEPS */
 .steps{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:1rem}
@@ -167,17 +172,27 @@ body{font-family:'Nunito',sans-serif;background:transparent;color:var(--text);fo
 
     <!-- INLINE CART: appears below catalog when items added -->
     <div id="inline-cart" class="card">
-      <div class="card-hd">
-        <h3>🛒 Корзина <span id="cart-count" style="font-size:12px;color:var(--muted);font-weight:400"></span></h3>
+      <!-- Шапка-кнопка: нажать чтобы раскрыть/скрыть -->
+      <div class="card-hd" onclick="toggleCart()" style="gap:8px">
+        <div style="display:flex;align-items:center;gap:8px;flex:1">
+          <span>🛒</span>
+          <span style="font-weight:700">Корзина</span>
+          <span id="cart-count" style="font-size:12px;color:var(--muted);font-weight:400"></span>
+        </div>
+        <span id="cart-total-mini" style="font-family:'Unbounded',sans-serif;font-size:13px;font-weight:700;color:var(--k)"></span>
+        <span id="cart-toggle-icon">▲</span>
       </div>
-      <div class="card-body">
-        <div id="cart-items"><div class="empty-cart">Добавьте товары из каталога</div></div>
-        <div id="cart-footer" style="display:none">
-          <div class="cart-total">
-            <span class="cart-total-lbl">Итого:</span>
-            <span class="cart-total-val" id="cart-total">0 ₩</span>
+      <!-- Раскрывающееся тело -->
+      <div id="cart-body-wrap">
+        <div class="card-body">
+          <div id="cart-items"></div>
+          <div id="cart-footer" style="display:none">
+            <div class="cart-total">
+              <span class="cart-total-lbl">Итого:</span>
+              <span class="cart-total-val" id="cart-total">0 ₩</span>
+            </div>
+            <button class="btn-main" onclick="goToForm()">Оформить заказ →</button>
           </div>
-          <button class="btn-main" onclick="goToForm()">Оформить заказ →</button>
         </div>
       </div>
     </div>
@@ -376,6 +391,22 @@ function addToCart(p, variant){
 }
 
 // CART
+var cartOpen = true;
+
+function toggleCart(){
+  cartOpen = !cartOpen;
+  var wrap = document.getElementById('cart-body-wrap');
+  var icon = document.getElementById('cart-toggle-icon');
+  if(cartOpen){
+    wrap.classList.add('open');
+    icon.textContent = '▲';
+  } else {
+    wrap.classList.remove('open');
+    icon.textContent = '▼';
+  }
+  setTimeout(sendHeight, 350);
+}
+
 function renderCart(){
   var items = Object.values(cart).filter(function(i){ return i.qty>0; });
   var inlineCart = document.getElementById('inline-cart');
@@ -383,23 +414,34 @@ function renderCart(){
   var itemsEl = document.getElementById('cart-items');
   var footerEl = document.getElementById('cart-footer');
   var totalEl = document.getElementById('cart-total');
+  var miniTotal = document.getElementById('cart-total-mini');
+  var wrap = document.getElementById('cart-body-wrap');
+  var icon = document.getElementById('cart-toggle-icon');
 
   if(!items.length){
     inlineCart.classList.remove('visible');
-    itemsEl.innerHTML = '<div class="empty-cart">Добавьте товары из каталога</div>';
     if(footerEl) footerEl.style.display = 'none';
     if(countEl) countEl.textContent = '';
+    if(miniTotal) miniTotal.textContent = '';
     return;
   }
 
   var total = 0, count = 0;
   items.forEach(function(i){ total += (i.price||i.product.price) * i.qty; count += i.qty; });
 
-  // Show inline cart below catalog
+  // Show cart, auto-open when first item added
   inlineCart.classList.add('visible');
   if(countEl) countEl.textContent = count + ' шт.';
   if(totalEl) totalEl.textContent = fmt(total);
+  if(miniTotal) miniTotal.textContent = fmt(total);
   if(footerEl) footerEl.style.display = 'block';
+
+  // Auto-open on first add
+  if(!wrap.classList.contains('open')){
+    cartOpen = true;
+    wrap.classList.add('open');
+    if(icon) icon.textContent = '▲';
+  }
 
   itemsEl.innerHTML = '';
   items.forEach(function(i){
@@ -415,14 +457,20 @@ function renderCart(){
       '<div class="cart-price">'+fmt((i.price||i.product.price) * i.qty)+'</div>';
 
     var btns = row.querySelectorAll('.qty-btn');
-    btns[0].onclick = function(){
+    btns[0].onclick = function(e){
+      e.stopPropagation();
       cart[i.key||i.product.id].qty--;
       if(cart[i.key||i.product.id].qty <= 0) delete cart[i.key||i.product.id];
       renderCatalog(); renderCart();
     };
-    btns[1].onclick = function(){ cart[i.key||i.product.id].qty++; renderCatalog(); renderCart(); };
+    btns[1].onclick = function(e){
+      e.stopPropagation();
+      cart[i.key||i.product.id].qty++;
+      renderCatalog(); renderCart();
+    };
     itemsEl.appendChild(row);
   });
+  setTimeout(sendHeight, 100);
 }
 
 function goToForm(){
