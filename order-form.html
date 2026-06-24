@@ -17,7 +17,7 @@
 }
 body{font-family:'Nunito',sans-serif;background:transparent;color:var(--text);font-size:15px;overflow-y:auto;overflow-x:hidden}
 .header{display:none}
-.main{display:block;padding:.75rem;width:100%;max-width:100%;margin:0 auto;padding-bottom:90px}
+.main{display:block;padding:.75rem;width:100%;max-width:100%;margin:0 auto;padding-bottom:1rem}
 .catalog-col{flex:1;min-width:0}
 .cart-col{display:none}
 
@@ -634,6 +634,16 @@ function toast(msg){
   clearTimeout(toastTimer);
   toastTimer = setTimeout(function(){ el.style.opacity='0'; }, 2000);
 }
+
+// ── AUTO-RESIZE: сообщаем Wix реальную высоту страницы ──
+function sendHeight(){
+  var h = document.body.scrollHeight;
+  window.parent.postMessage({type:'iframeHeight', height: h}, '*');
+}
+// Отправляем при загрузке и при любых изменениях
+window.addEventListener('load', function(){ setTimeout(sendHeight, 300); });
+new MutationObserver(sendHeight).observe(document.body, {childList:true, subtree:true, attributes:true});
+window.addEventListener('resize', sendHeight);
 </script>
 
 <!-- VARIANTS POPUP -->
