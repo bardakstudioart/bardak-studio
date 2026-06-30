@@ -3176,7 +3176,7 @@ function addSale(p,pay,qty,receipt){
     });
   }
   var prod=products.find(function(x){return x.id===p.id;});
-  if(prod){prod.sold=(prod.sold||0)+qty;db.ref('products/'+prod.fbKey).update({sold:prod.sold});}
+  if(prod){prod.sold=(prod.sold||0)+qty;db.ref('products/'+prod.fbKey).update({sold:prod.sold});syncAvailability(prod);}
 }
 
 function getActiveEvent(){
@@ -3314,7 +3314,7 @@ function toggleReceipt(fbKey){
 function delSale(fbKey,productId){
   db.ref('sales/'+fbKey).remove();
   var p=products.find(function(x){return x.id===productId;});
-  if(p&&p.sold>0){p.sold--;db.ref('products/'+p.fbKey).update({sold:p.sold});}
+  if(p&&p.sold>0){p.sold--;db.ref('products/'+p.fbKey).update({sold:p.sold});syncAvailability(p);}
   toast('Продажа удалена');
 }
 function clearToday(){
@@ -3323,7 +3323,7 @@ function clearToday(){
   sales.filter(function(s){return new Date(s.time||s.ts).toDateString()===today;}).forEach(function(s){
     db.ref('sales/'+s.fbKey).remove();
     var p=products.find(function(x){return x.id===s.productId;});
-    if(p&&p.sold>0){p.sold--;db.ref('products/'+p.fbKey).update({sold:p.sold});}
+    if(p&&p.sold>0){p.sold--;db.ref('products/'+p.fbKey).update({sold:p.sold});syncAvailability(p);}
   });
 }
 
@@ -3654,8 +3654,24 @@ function renderInventory(){
     '</div>';
   }).join('');
 }
-function updateBrought(fbKey,val){db.ref('products/'+fbKey).update({brought:parseInt(val)||0});}
-function resetSold(){if(!confirm('Сбросить "продано"?'))return;products.forEach(function(p){db.ref('products/'+p.fbKey).update({sold:0});});toast('Сброшено');}
+function syncAvailability(p){
+  if(!p || !p.fbKey) return;
+  var remain = (p.brought||0) - (p.sold||0);
+  var avail = p.availability || 'available';
+  if(remain <= 0 && avail === 'available'){
+    db.ref('products/'+p.fbKey).update({availability:'unavailable', _autoUnavail:true});
+    p.availability = 'unavailable'; p._autoUnavail = true;
+  } else if(remain > 0 && avail === 'unavailable' && p._autoUnavail){
+    db.ref('products/'+p.fbKey).update({availability:'available', _autoUnavail:null});
+    p.availability = 'available'; p._autoUnavail = false;
+  }
+}
+function updateBrought(fbKey,val){
+  db.ref('products/'+fbKey).update({brought:parseInt(val)||0});
+  var p=products.find(function(x){return x.fbKey===fbKey;});
+  if(p){ p.brought=parseInt(val)||0; syncAvailability(p); }
+}
+function resetSold(){if(!confirm('Сбросить "продано"?'))return;products.forEach(function(p){db.ref('products/'+p.fbKey).update({sold:0});p.sold=0;syncAvailability(p);});toast('Сброшено');}
 
 // ===== PUBLISH MODULE =====
 var selectedEventForPublish = null;
