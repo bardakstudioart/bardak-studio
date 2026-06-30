@@ -2312,18 +2312,18 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
 
 /* VARIANTS */
 .var-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:500;display:flex;align-items:center;justify-content:center;padding:1rem}
-.var-modal{background:#fff;border-radius:var(--r);width:100%;max-width:700px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
-.var-modal-hd{padding:1rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.var-modal{background:#fff;border-radius:var(--r);width:100%;max-width:520px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.var-modal-hd{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .var-modal-hd h3{font-family:'Unbounded',sans-serif;font-size:.85rem;font-weight:600}
-.var-modal-body{overflow-y:auto;padding:1rem 1.5rem;flex:1}
+.var-modal-body{overflow-y:auto;padding:1rem 1.25rem;flex:1}
 .var-group-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;margin-top:12px}
 .var-group-lbl:first-child{margin-top:0}
-.var-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
-.var-item{border:2px solid var(--border);border-radius:12px;transition:all .15s;overflow:visible;text-align:center;padding:10px 8px;background:#fff;width:100%}
+.var-grid{display:flex;gap:8px;flex-wrap:wrap}
+.var-item{border:2px solid var(--border);border-radius:10px;cursor:pointer;transition:all .15s;overflow:hidden;text-align:center;padding:6px;background:#fff;min-width:80px}
 .var-item:hover{border-color:var(--k);background:var(--kl)}
 .var-item.sel{border-color:var(--k);background:var(--kl)}
-.var-item img{width:64px;height:64px;object-fit:cover;border-radius:6px;display:block;margin:0 auto 4px}
-.var-item-name{font-size:11px;font-weight:700;color:var(--text);line-height:1.3;margin-bottom:4px}
+.var-item img{width:60px;height:60px;object-fit:cover;border-radius:6px;display:block;margin:0 auto 4px}
+.var-item-name{font-size:11px;font-weight:700;color:var(--text);line-height:1.3}
 .var-item-price{font-size:10px;color:var(--k);font-weight:700;margin-top:2px;font-family:'Unbounded',sans-serif}
 .var-item.unavail{opacity:.4;cursor:not-allowed}
 .var-item.unavail:hover{border-color:var(--border);background:#fff}
@@ -2606,6 +2606,11 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
     <button class="btn sm" id="f-all" onclick="filterCat('all')" style="background:var(--text);color:#fff;border-color:var(--text)">Все</button>
     <button class="btn sm bdg k" id="f-katya" onclick="filterCat('katya')">Bardak Studio</button>
     <button class="btn sm bdg m" id="f-masha" onclick="filterCat('masha')">SealMary</button>
+    <select class="fi" id="cat-sort" onchange="setCatSort(this.value)" style="margin-left:8px;width:auto">
+      <option value="default">Без сортировки</option>
+      <option value="az">А → Я</option>
+      <option value="za">Я → А</option>
+    </select>
     <button class="btn sm red" onclick="loadDefaultProducts()" style="margin-left:auto">↺ Загрузить все товары</button>
   </div>
   <div class="cat-grid" id="cat-grid"><div class="empty" style="grid-column:1/-1">Загрузка...</div></div>
@@ -3578,9 +3583,17 @@ function filterCat(f){
   ['all','katya','masha'].forEach(function(k){var el=document.getElementById('f-'+k);if(el)el.style.opacity=k===f?'1':'0.45';});
   renderCatalog();
 }
+var catSort='default';
+function setCatSort(v){ catSort=v; renderCatalog(); }
+function sortProductList(list){
+  if(catSort==='az') return list.slice().sort(function(a,b){return a.name.localeCompare(b.name,'ru');});
+  if(catSort==='za') return list.slice().sort(function(a,b){return b.name.localeCompare(a.name,'ru');});
+  return list;
+}
 function renderCatalog(){
   var grid=document.getElementById('cat-grid');
   var list=catFilter==='all'?products:products.filter(function(p){return p.owner===catFilter;});
+  list=sortProductList(list);
   if(!list.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1">Нет товаров</div>';return;}
   grid.innerHTML='';
   list.forEach(function(p){
@@ -4923,6 +4936,7 @@ var _origRenderCatalog = renderCatalog;
 renderCatalog = function(){
   var grid = document.getElementById('cat-grid');
   var list = catFilter==='all' ? products : products.filter(function(p){ return p.owner===catFilter; });
+  list = sortProductList(list);
   if(!list.length){
     grid.innerHTML = '<div class="empty" style="grid-column:1/-1">Нет товаров</div>';
     return;
@@ -5244,18 +5258,18 @@ function printEnvelope(order){
 
 /* VARIANTS */
 .var-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:500;display:flex;align-items:center;justify-content:center;padding:1rem}
-.var-modal{background:#fff;border-radius:var(--r);width:100%;max-width:700px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
-.var-modal-hd{padding:1rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.var-modal{background:#fff;border-radius:var(--r);width:100%;max-width:520px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.var-modal-hd{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .var-modal-hd h3{font-family:'Unbounded',sans-serif;font-size:.85rem;font-weight:600}
-.var-modal-body{overflow-y:auto;padding:1rem 1.5rem;flex:1}
+.var-modal-body{overflow-y:auto;padding:1rem 1.25rem;flex:1}
 .var-group-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;margin-top:12px}
 .var-group-lbl:first-child{margin-top:0}
-.var-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
-.var-item{border:2px solid var(--border);border-radius:12px;transition:all .15s;overflow:visible;text-align:center;padding:10px 8px;background:#fff;width:100%}
+.var-grid{display:flex;gap:8px;flex-wrap:wrap}
+.var-item{border:2px solid var(--border);border-radius:10px;cursor:pointer;transition:all .15s;overflow:hidden;text-align:center;padding:6px;background:#fff;min-width:80px}
 .var-item:hover{border-color:var(--k);background:var(--kl)}
 .var-item.sel{border-color:var(--k);background:var(--kl)}
-.var-item img{width:64px;height:64px;object-fit:cover;border-radius:6px;display:block;margin:0 auto 4px}
-.var-item-name{font-size:11px;font-weight:700;color:var(--text);line-height:1.3;margin-bottom:4px}
+.var-item img{width:60px;height:60px;object-fit:cover;border-radius:6px;display:block;margin:0 auto 4px}
+.var-item-name{font-size:11px;font-weight:700;color:var(--text);line-height:1.3}
 .var-item-price{font-size:10px;color:var(--k);font-weight:700;margin-top:2px;font-family:'Unbounded',sans-serif}
 .var-item.unavail{opacity:.4;cursor:not-allowed}
 .var-item.unavail:hover{border-color:var(--border);background:#fff}
@@ -5434,109 +5448,66 @@ function renderVarModal(p){
       var unavail = v.availability==='unavailable';
       var div = document.createElement('div');
       div.className = 'var-item'+(unavail?' unavail':'');
-      div.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px';
 
-      // ── PHOTO (square, full width of card) ──
-      var photoBox = document.createElement('div');
-      photoBox.style.cssText = 'position:relative;width:100%;padding-bottom:100%;border-radius:8px;overflow:hidden;background:#f5f5f5;border:2px dashed var(--border);cursor:pointer;flex-shrink:0';
-      photoBox.title = 'Нажмите чтобы добавить/сменить фото';
-
+      // Photo or placeholder
       if(v.photo){
         var img = document.createElement('img');
         img.src = v.photo; img.alt = v.name;
-        img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover';
-        photoBox.appendChild(img);
-        photoBox.style.border = 'none';
+        div.appendChild(img);
       } else {
-        var phIcon = document.createElement('div');
-        phIcon.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.6rem;color:#bbb';
-        phIcon.textContent = '📷';
-        photoBox.appendChild(phIcon);
+        var ph = document.createElement('div');
+        ph.style.cssText = 'width:60px;height:60px;border-radius:6px;background:var(--bg);display:flex;align-items:center;justify-content:center;margin:0 auto 4px;font-size:1.5rem';
+        ph.textContent = '🎨';
+        div.appendChild(ph);
       }
 
-      // File input over photo
-      var photoInput = document.createElement('input');
-      photoInput.type = 'file'; photoInput.accept = 'image/*';
-      photoInput.style.cssText = 'position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%';
-      (function(varId, box){
-        photoInput.onchange = function(){
-          var f = this.files[0]; if(!f) return;
-          compressImage(f, 400, 0.8, function(compressed){
-            updateVariantPhoto(varId, compressed, box);
-          });
-        };
-      })(v.id, photoBox);
-      photoBox.appendChild(photoInput);
-      div.appendChild(photoBox);
-
-      // ── NAME ──
       var nm = document.createElement('div');
-      nm.className = 'var-item-name';
-      nm.style.cssText = 'font-size:11px;font-weight:700;text-align:center;width:100%;word-break:break-word';
-      nm.textContent = v.name;
+      nm.className = 'var-item-name'; nm.textContent = v.name;
       div.appendChild(nm);
 
-      // ── PRICE ROW: [input ₩] [💾] ──
-      var prRow = document.createElement('div');
-      prRow.style.cssText = 'display:flex;align-items:center;gap:3px;width:100%';
-
+      // Editable price
+      var prWrap = document.createElement('div');
+      prWrap.style.cssText = 'display:flex;align-items:center;gap:3px;justify-content:center;margin-top:2px';
       var prInput = document.createElement('input');
       prInput.type = 'number';
       prInput.value = v.price||0;
-      prInput.style.cssText = 'flex:1;min-width:0;font-size:12px;font-weight:700;color:var(--k);border:1.5px solid var(--border);border-radius:6px;padding:5px 4px;text-align:center;font-family:Unbounded,sans-serif;background:#fff;outline:none;width:100%';
-      prInput.onclick = function(e){ e.stopPropagation(); this.style.borderColor='var(--k)'; };
-      prInput.onblur = function(){ this.style.borderColor='var(--border)'; };
+      prInput.style.cssText = 'width:60px;font-size:10px;font-weight:700;color:var(--k);border:1px solid transparent;border-radius:5px;padding:1px 4px;text-align:center;font-family:Unbounded,sans-serif;background:transparent;outline:none';
+      prInput.title = 'Нажмите чтобы изменить цену';
+      prInput.onfocus = function(){ this.style.borderColor='var(--k)';this.style.background='#fff'; };
+      prInput.onblur = function(){
+        this.style.borderColor='transparent';this.style.background='transparent';
+        var newPrice = parseFloat(this.value)||0;
+        if(newPrice !== v.price){
+          updateVariantPrice(v.id, newPrice);
+        }
+      };
+      prInput.onkeydown = function(e){ if(e.key==='Enter') this.blur(); };
+      prInput.onclick = function(e){ e.stopPropagation(); };
+      prWrap.appendChild(prInput);
+      prWrap.innerHTML += '<span style="font-size:9px;color:var(--k)">₩</span>';
+      div.appendChild(prWrap);
 
-      var wonLabel = document.createElement('span');
-      wonLabel.textContent = '₩';
-      wonLabel.style.cssText = 'font-size:10px;color:var(--k);flex-shrink:0';
-
-      var saveBtn = document.createElement('button');
-      saveBtn.textContent = '💾';
-      saveBtn.title = 'Сохранить цену';
-      saveBtn.style.cssText = 'flex-shrink:0;font-size:13px;padding:3px 5px;border-radius:6px;border:1.5px solid var(--k);background:var(--kl);cursor:pointer;line-height:1';
-
-      (function(varId, inp){
-        saveBtn.onclick = function(e){
-          e.stopPropagation();
-          var newPrice = parseFloat(inp.value)||0;
-          saveBtn.textContent = '⏳';
-          updateVariantPrice(varId, newPrice, function(){
-            saveBtn.textContent = '✅';
-            setTimeout(function(){ saveBtn.textContent = '💾'; }, 1200);
-          });
-        };
-        inp.onkeydown = function(e){ if(e.key==='Enter'){ e.preventDefault(); saveBtn.click(); } };
-      })(v.id, prInput);
-
-      prRow.appendChild(prInput);
-      prRow.appendChild(wonLabel);
-      prRow.appendChild(saveBtn);
-      div.appendChild(prRow);
-
-      // ── STATUS + DELETE ROW ──
-      var ctrlRow = document.createElement('div');
-      ctrlRow.style.cssText = 'display:flex;gap:4px;width:100%;align-items:center';
+      var row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:4px;margin-top:5px;justify-content:center';
 
       var sel = document.createElement('select');
-      sel.style.cssText = 'flex:1;font-size:10px;border:1px solid var(--border);border-radius:5px;padding:3px 2px;font-family:Nunito,sans-serif;background:#fff';
-      [['available','✅ В наличии'],['unavailable','❌ Нет'],['preorder','📋 Предзаказ']].forEach(function(opt){
+      sel.style.cssText = 'font-size:10px;border:1px solid var(--border);border-radius:5px;padding:1px 3px;font-family:Nunito,sans-serif';
+      [['available','✅'],['unavailable','❌'],['preorder','📋']].forEach(function(opt){
         var o = document.createElement('option');
         o.value = opt[0]; o.textContent = opt[1];
         if(v.availability===opt[0]) o.selected = true;
         sel.appendChild(o);
       });
       sel.onchange = function(){ updateVariantAvail(v.id, sel.value); };
+      row.appendChild(sel);
 
       var delBtn = document.createElement('button');
-      delBtn.style.cssText = 'flex-shrink:0;font-size:11px;padding:3px 7px;border-radius:5px;border:1px solid #E24B4A;background:#FCEBEB;color:#E24B4A;cursor:pointer;font-weight:700';
+      delBtn.style.cssText = 'font-size:10px;padding:1px 5px;border-radius:5px;border:1px solid #E24B4A;background:#FCEBEB;color:#E24B4A;cursor:pointer';
       delBtn.textContent = '✕';
       delBtn.onclick = function(){ deleteVariant(v.id); };
+      row.appendChild(delBtn);
 
-      ctrlRow.appendChild(sel);
-      ctrlRow.appendChild(delBtn);
-      div.appendChild(ctrlRow);
-
+      div.appendChild(row);
       grid.appendChild(div);
     });
 
@@ -5603,7 +5574,7 @@ function deleteVariant(varId){
   });
 }
 
-function updateVariantPrice(varId, price, cb){
+function updateVariantPrice(varId, price){
   if(!currentVarProduct) return;
   db.ref('products/'+currentVarProduct.fbKey+'/variants').once('value', function(snap){
     var variants = snap.val() ? (Array.isArray(snap.val()) ? snap.val() : Object.values(snap.val()).filter(Boolean)) : [];
@@ -5611,8 +5582,7 @@ function updateVariantPrice(varId, price, cb){
     if(v){ v.price = price; }
     db.ref('products/'+currentVarProduct.fbKey).update({variants: variants}, function(){
       currentVarProduct.variants = variants;
-      toast('Цена сохранена','ok');
-      if(cb) cb();
+      toast('Цена обновлена','ok');
     });
   });
 }
@@ -5630,25 +5600,6 @@ function updateVariantAvail(varId, avail){
   });
 }
 
-function updateVariantPhoto(varId, photoData, wrapEl){
-  if(!currentVarProduct) return;
-  db.ref('products/'+currentVarProduct.fbKey+'/variants').once('value', function(snap){
-    var variants = snap.val() ? (Array.isArray(snap.val()) ? snap.val() : Object.values(snap.val()).filter(Boolean)) : [];
-    var v = variants.find(function(x){ return x && x.id===varId; });
-    if(v){ v.photo = photoData; }
-    db.ref('products/'+currentVarProduct.fbKey).update({variants: variants}, function(){
-      currentVarProduct.variants = variants;
-      // Update photo in-place without full re-render
-      var oldEl = wrapEl.querySelector('img, div[style*="dashed"]');
-      if(oldEl) wrapEl.removeChild(oldEl);
-      var img = document.createElement('img');
-      img.src = photoData; img.alt = '';
-      img.style.cssText = 'width:60px;height:60px;object-fit:cover;border-radius:6px;display:block';
-      wrapEl.insertBefore(img, wrapEl.firstChild);
-      toast('Фото обновлено','ok');
-    });
-  });
-}
 
 // ===== NEW PRODUCT VARIANTS =====
 var newVariants = [];
