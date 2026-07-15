@@ -2108,6 +2108,7 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
 .multi-search{font-family:"Nunito",sans-serif;font-size:14px;border:1px solid var(--border);border-radius:9px;padding:8px 12px;width:100%;outline:none;margin-bottom:8px}
 .multi-search:focus{border-color:var(--k)}
 .multi-list{max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:9px;background:white}
+.multi-group-hd{position:sticky;top:0;z-index:1;background:#FAFAF8;border-bottom:1px solid var(--border);padding:6px 12px;font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
 .multi-item{display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s}
 .multi-item:last-child{border-bottom:none}
 .multi-item:hover{background:#F7F5F0}
@@ -3199,27 +3200,47 @@ function renderMultiList(){
   var list=query?products.filter(function(p){return p.name.toLowerCase().indexOf(query)>=0;}):products;
   var el=document.getElementById('multi-list');
   if(!list.length){el.innerHTML='<div class="empty">Ничего не найдено</div>';return;}
-  el.innerHTML='';
+
+  // Group by owner, sort groups by their label (Bardak Studio / SealMary),
+  // and sort products inside each group alphabetically (ru locale).
+  var groups={};
   list.forEach(function(p){
-    var qty=cart[p.id]||0;
-    var div=document.createElement('div');
-    div.className='multi-item'+(qty>0?' selected':'');
-    div.id='mi-'+p.id;
-    var ownerShort=ownerLabel(p.owner).slice(0,2);
-    var ownerClass=p.owner[0];
-    div.innerHTML='<div class="multi-item-owner bdg '+ownerClass+'">'+ownerShort+'</div>'+
-      '<div class="multi-item-name">'+p.name+'</div>'+
-      '<div class="multi-item-price">'+fmt(p.price)+'</div>'+
-      '<div class="multi-qty">'+
-        '<button class="qty-btn" id="qm-'+p.id+'">-</button>'+
-        '<span class="qty-val" id="qty-'+p.id+'">'+qty+'</span>'+
-        '<button class="qty-btn" id="qp-'+p.id+'">+</button>'+
-      '</div>';
-    el.appendChild(div);
-    (function(pid){
-      document.getElementById('qm-'+pid).onclick=function(e){e.stopPropagation();changeQty(pid,-1);};
-      document.getElementById('qp-'+pid).onclick=function(e){e.stopPropagation();changeQty(pid,1);};
-    })(p.id);
+    var label=ownerLabel(p.owner);
+    if(!groups[label])groups[label]=[];
+    groups[label].push(p);
+  });
+  var groupNames=Object.keys(groups).sort(function(a,b){return a.localeCompare(b,'ru');});
+  groupNames.forEach(function(g){
+    groups[g].sort(function(a,b){return a.name.localeCompare(b.name,'ru');});
+  });
+
+  el.innerHTML='';
+  groupNames.forEach(function(g){
+    var hd=document.createElement('div');
+    hd.className='multi-group-hd';
+    hd.textContent=g;
+    el.appendChild(hd);
+    groups[g].forEach(function(p){
+      var qty=cart[p.id]||0;
+      var div=document.createElement('div');
+      div.className='multi-item'+(qty>0?' selected':'');
+      div.id='mi-'+p.id;
+      var ownerShort=ownerLabel(p.owner).slice(0,2);
+      var ownerClass=p.owner[0];
+      div.innerHTML='<div class="multi-item-owner bdg '+ownerClass+'">'+ownerShort+'</div>'+
+        '<div class="multi-item-name">'+p.name+'</div>'+
+        '<div class="multi-item-price">'+fmt(p.price)+'</div>'+
+        '<div class="multi-qty">'+
+          '<button class="qty-btn" id="qm-'+p.id+'">-</button>'+
+          '<span class="qty-val" id="qty-'+p.id+'">'+qty+'</span>'+
+          '<button class="qty-btn" id="qp-'+p.id+'">+</button>'+
+        '</div>';
+      el.appendChild(div);
+      (function(pid){
+        document.getElementById('qm-'+pid).onclick=function(e){e.stopPropagation();changeQty(pid,-1);};
+        document.getElementById('qp-'+pid).onclick=function(e){e.stopPropagation();changeQty(pid,1);};
+      })(p.id);
+    });
   });
 }
 function filterMultiList(){renderMultiList();}
