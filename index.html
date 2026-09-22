@@ -5191,31 +5191,57 @@ renderCatalog = function(){
           var dlBtn = div.querySelector('.dl-bc-btn');
           if(dlBtn){
             dlBtn.onclick = function(){
-              var srcCanvas = document.getElementById('bc-'+k);
-              if(!srcCanvas) return;
-              // Always get fresh price from products array
               var currentProduct = products.find(function(x){ return x.id===id; });
               var currentPrice = currentProduct ? currentProduct.price : 0;
               var priceText = currentPrice ? Math.round(currentPrice).toLocaleString('ru-RU') + ' \u20a9' : '';
 
+              // 30x14mm at 300dpi
+              var DPI = 300;
+              var MM = DPI / 25.4;
+              var W = Math.round(30 * MM); // 354px
+              var H = Math.round(14 * MM); // 165px
+
               var printCanvas = document.createElement('canvas');
-              printCanvas.width = srcCanvas.width;
-              printCanvas.height = srcCanvas.height + (priceText ? 18 : 0);
+              printCanvas.width = W;
+              printCanvas.height = H;
               var ctx = printCanvas.getContext('2d');
               ctx.fillStyle = '#ffffff';
-              ctx.fillRect(0,0,printCanvas.width,printCanvas.height);
-              ctx.drawImage(srcCanvas,0,0);
-              if(priceText){
-                ctx.fillStyle = '#1a1a1a';
-                ctx.font = 'bold 11px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(priceText, printCanvas.width/2, srcCanvas.height + 13);
-              }
-              var a = document.createElement('a');
-              a.download = id + '.png';
-              a.href = printCanvas.toDataURL('image/png');
-              a.click();
-              toast('Штрихкод сохранён','ok');
+              ctx.fillRect(0,0,W,H);
+
+              // Generate barcode into temp canvas
+              var tmpSvg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+              document.body.appendChild(tmpSvg);
+              try{
+                var bcH = priceText ? Math.round(H * 0.62) : Math.round(H * 0.75);
+                JsBarcode(tmpSvg, id, {
+                  format:'CODE128', width:2, height:bcH,
+                  displayValue:true, margin:2,
+                  background:'#ffffff', lineColor:'#000000',
+                  fontSize:18, font:'Arial'
+                });
+                // Convert SVG to image
+                var svgData = new XMLSerializer().serializeToString(tmpSvg);
+                var svgBlob = new Blob([svgData], {type:'image/svg+xml;charset=utf-8'});
+                var url = URL.createObjectURL(svgBlob);
+                var img = new Image();
+                img.onload = function(){
+                  ctx.drawImage(img, 0, 2, W, bcH + 4);
+                  if(priceText){
+                    ctx.fillStyle = '#000000';
+                    ctx.font = 'bold '+Math.round(H*0.17)+'px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(priceText, W/2, H - 6);
+                  }
+                  URL.revokeObjectURL(url);
+                  var a = document.createElement('a');
+                  a.download = id + '.png';
+                  a.href = printCanvas.toDataURL('image/png');
+                  a.click();
+                  toast('Штрихкод сохранён (30×14мм)','ok');
+                };
+                img.src = url;
+              }catch(e){ toast('Ошибка генерации','err'); }
+              document.body.removeChild(tmpSvg);
             };
           }
         }catch(e){}
