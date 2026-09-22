@@ -5699,11 +5699,10 @@ function printEnvelope(order){
   </div>
 </div>
 <script>
+// Unregister any old service workers that may have broken the app
 if('serviceWorker' in navigator){
-  window.addEventListener('load', function(){
-    navigator.serviceWorker.register('sw.js')
-      .then(function(reg){ console.log('SW registered:', reg.scope); })
-      .catch(function(err){ console.log('SW error:', err); });
+  navigator.serviceWorker.getRegistrations().then(function(regs){
+    regs.forEach(function(reg){ reg.unregister(); });
   });
 }
 </script>
@@ -6388,11 +6387,10 @@ setTimeout(function(){
 
 </script>
 <script>
+// Unregister any old service workers that may have broken the app
 if('serviceWorker' in navigator){
-  window.addEventListener('load', function(){
-    navigator.serviceWorker.register('sw.js')
-      .then(function(reg){ console.log('SW registered:', reg.scope); })
-      .catch(function(err){ console.log('SW error:', err); });
+  navigator.serviceWorker.getRegistrations().then(function(regs){
+    regs.forEach(function(reg){ reg.unregister(); });
   });
 }
 </script>
