@@ -5186,7 +5186,7 @@ renderCatalog = function(){
     (function(k,id,name){
       setTimeout(function(){
         try{
-          JsBarcode('#bc-'+k,id,{format:'CODE128',width:1.6,height:48,displayValue:true,margin:4,background:'#ffffff',lineColor:'#1A1A1A',fontSize:10,font:'Nunito'});
+          JsBarcode('#bc-'+k,id,{format:'CODE128',width:1.6,height:48,displayValue:false,margin:4,background:'#ffffff',lineColor:'#1A1A1A'});
           // Bind download button
           var dlBtn = div.querySelector('.dl-bc-btn');
           if(dlBtn){
@@ -5196,16 +5196,11 @@ renderCatalog = function(){
               if(!srcCanvas) return;
               var printCanvas = document.createElement('canvas');
               printCanvas.width = srcCanvas.width;
-              printCanvas.height = srcCanvas.height + 20;
+              printCanvas.height = srcCanvas.height;
               var ctx = printCanvas.getContext('2d');
               ctx.fillStyle = '#ffffff';
               ctx.fillRect(0,0,printCanvas.width,printCanvas.height);
               ctx.drawImage(srcCanvas,0,0);
-              // Add product name below
-              ctx.fillStyle = '#1a1a1a';
-              ctx.font = '10px Arial';
-              ctx.textAlign = 'center';
-              ctx.fillText(name.length>20?name.slice(0,20)+'…':name, printCanvas.width/2, printCanvas.height-4);
               var a = document.createElement('a');
               a.download = id+'_'+name.replace(/[^a-zA-Zа-яА-Я0-9]/g,'_')+'.png';
               a.href = printCanvas.toDataURL('image/png');
