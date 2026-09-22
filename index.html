@@ -2643,6 +2643,15 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
 <!-- INVENTORY -->
 <div id="pg-inventory" class="pg">
   <div class="stats" id="inv-stats"></div>
+
+  <!-- Filters -->
+  <div style="display:flex;gap:8px;margin-bottom:.5rem;flex-wrap:wrap;align-items:center">
+    <button class="btn sm" id="inv-f-all" onclick="setInvFilter('all')" style="background:var(--text);color:#fff;border-color:var(--text)">Все</button>
+    <button class="btn sm bdg k" id="inv-f-katya" onclick="setInvFilter('katya')">Bardak Studio</button>
+    <button class="btn sm bdg m" id="inv-f-masha" onclick="setInvFilter('masha')">SealMary</button>
+  </div>
+  <div id="inv-cat-filters" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem;min-height:24px"></div>
+
   <div class="card">
     <div class="card-hd"><h3>Остатки</h3><button class="btn sm" onclick="resetSold()">↺ Сбросить продано</button></div>
     <div class="inv-hdr"><span>Товар</span><span style="text-align:right">Цена</span><span style="text-align:center">Привезли</span><span style="text-align:center">Продано</span><span style="text-align:center">Остаток</span></div>
@@ -3401,18 +3410,55 @@ function renderAllSales(){
   document.getElementById('h-receipts').className='sval'+(withReceipt<sales.length?' p':' g');
   var log=document.getElementById('all-log');
   if(!sales.length){log.innerHTML='<div class="empty">Нет продаж</div>';return;}
-  log.innerHTML=sales.map(function(s){
-    var t=new Date(s.time||s.ts);
-    var dt=t.toLocaleDateString('ru-RU')+' '+pad(t.getHours())+':'+pad(t.getMinutes());
-    var receiptClass=s.receipt?'yes':'no';
-    return '<div class="log-row">'+
-      '<span class="bdg '+s.owner[0]+'">'+( s.owner==='katya'?'BS':'SM')+'</span>'+
-      '<span class="log-name">'+s.name+(s.eventName?'<span style="font-size:10px;color:var(--muted)"> • '+s.eventName+'</span>':'')+'</span>'+
-      '<span class="bdg '+s.pay+'" style="font-size:10px">'+payLabel(s.pay)+'</span>'+
-      '<span style="font-size:11px;color:var(--muted)">'+dt+'</span>'+
-      '<button class="receipt-btn '+receiptClass+'" onclick="toggleReceipt(\''+s.fbKey+'\')" title="Чек пробит?">'+( s.receipt?'✓':'!')+'</button>'+
-      '<span class="log-amt" style="color:'+( s.owner==='katya'?'var(--k)':'var(--m)')+'">'+fmt(s.price)+'</span>'+
-      '<button class="del-btn" onclick="delSale(\''+s.fbKey+'\',\''+s.productId+'\')">✕</button>'+
+
+  // Group by date
+  var byDate = {};
+  var dateOrder = [];
+  sales.forEach(function(s){
+    var t = new Date(s.time||s.ts);
+    var dateKey = t.toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',year:'numeric'});
+    if(!byDate[dateKey]){ byDate[dateKey]=[]; dateOrder.push(dateKey); }
+    byDate[dateKey].push(s);
+  });
+
+  log.innerHTML = dateOrder.map(function(dateKey){
+    var daySales = byDate[dateKey];
+    var dayTotal = daySales.reduce(function(a,s){return a+s.price;},0);
+    var dayKatya = daySales.filter(function(s){return s.owner==='katya';}).reduce(function(a,s){return a+s.price;},0);
+    var dayMasha = daySales.filter(function(s){return s.owner==='masha';}).reduce(function(a,s){return a+s.price;},0);
+    var dayCash  = daySales.filter(function(s){return s.pay==='cash';}).reduce(function(a,s){return a+s.price;},0);
+    var dayCard  = daySales.filter(function(s){return s.pay==='card';}).reduce(function(a,s){return a+s.price;},0);
+    var dayTonjan= daySales.filter(function(s){return s.pay==='tonjan';}).reduce(function(a,s){return a+s.price;},0);
+
+    var rows = daySales.map(function(s){
+      var t=new Date(s.time||s.ts);
+      var tm=pad(t.getHours())+':'+pad(t.getMinutes());
+      var receiptClass=s.receipt?'yes':'no';
+      return '<div class="log-row">'+
+        '<span class="bdg '+s.owner[0]+'">'+( s.owner==='katya'?'BS':'SM')+'</span>'+
+        '<span class="log-name">'+s.name+(s.eventName?'<span style="font-size:10px;color:var(--muted)"> • '+s.eventName+'</span>':'')+'</span>'+
+        '<span class="bdg '+s.pay+'" style="font-size:10px">'+payLabel(s.pay)+'</span>'+
+        '<span style="font-size:11px;color:var(--muted)">'+tm+'</span>'+
+        '<button class="receipt-btn '+receiptClass+'" onclick="toggleReceipt(\''+s.fbKey+'\')" title="Чек пробит?">'+( s.receipt?'✓':'!')+'</button>'+
+        '<span class="log-amt" style="color:'+( s.owner==='katya'?'var(--k)':'var(--m)')+'">'+fmt(s.price)+'</span>'+
+        '<button class="del-btn" onclick="delSale(\''+s.fbKey+'\',\''+s.productId+'\')">✕</button>'+
+      '</div>';
+    }).join('');
+
+    return '<div style="margin-bottom:1rem">'+
+      // Day header
+      '<div style="display:flex;align-items:center;gap:10px;padding:.6rem 1rem;background:var(--bg);border-radius:10px;margin-bottom:4px;flex-wrap:wrap;gap:8px">'+
+        '<span style="font-family:Unbounded,sans-serif;font-size:.8rem;font-weight:700">'+dateKey+'</span>'+
+        '<span style="font-size:12px;color:var(--muted)">'+daySales.length+' продаж</span>'+
+        '<span style="font-family:Unbounded,sans-serif;font-size:.85rem;font-weight:700;color:var(--k);margin-left:auto">'+fmt(dayTotal)+'</span>'+
+        (dayKatya?'<span class="bdg k" style="font-size:10px">BS: '+fmt(dayKatya)+'</span>':'')+
+        (dayMasha?'<span class="bdg m" style="font-size:10px">SM: '+fmt(dayMasha)+'</span>':'')+
+        (dayCash?'<span class="bdg cash" style="font-size:10px">💵 '+fmt(dayCash)+'</span>':'')+
+        (dayTonjan?'<span class="bdg tonjan" style="font-size:10px">📲 '+fmt(dayTonjan)+'</span>':'')+
+        (dayCard?'<span class="bdg card" style="font-size:10px">💳 '+fmt(dayCard)+'</span>':'')+
+      '</div>'+
+      // Day rows
+      '<div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">'+rows+'</div>'+
     '</div>';
   }).join('');
 }
@@ -3695,26 +3741,80 @@ function printLabels(){
 }
 
 // INVENTORY
+var invShopFilter = 'all';
+var invCatFilter = '';
+
+function setInvFilter(shop){
+  invShopFilter = shop;
+  invCatFilter = '';
+  ['all','katya','masha'].forEach(function(k){
+    var el = document.getElementById('inv-f-'+k);
+    if(el) el.style.opacity = k===shop ? '1' : '0.45';
+  });
+  renderInvCatFilters();
+  renderInventory();
+}
+
+function renderInvCatFilters(){
+  var el = document.getElementById('inv-cat-filters');
+  if(!el) return;
+  el.innerHTML = '';
+
+  var filtered = invShopFilter==='all' ? products : products.filter(function(p){ return p.owner===invShopFilter; });
+  var usedCats = {};
+  filtered.forEach(function(p){ if(p.category) usedCats[p.category]=true; });
+  var cats = Object.keys(usedCats);
+  if(!cats.length){ el.style.display='none'; return; }
+  el.style.display = 'flex';
+
+  var allBtn = document.createElement('button');
+  allBtn.className = 'cat-filter-btn'+(invCatFilter===''?' on':'');
+  allBtn.textContent = 'Все категории';
+  allBtn.onclick = function(){ invCatFilter=''; renderInvCatFilters(); renderInventory(); };
+  el.appendChild(allBtn);
+
+  cats.forEach(function(c){
+    var btn = document.createElement('button');
+    btn.className = 'cat-filter-btn'+(invCatFilter===c?' on':'');
+    btn.textContent = c;
+    btn.onclick = function(){ invCatFilter=c; renderInvCatFilters(); renderInventory(); };
+    el.appendChild(btn);
+  });
+}
+
 function renderInventory(){
+  // Apply filters
+  var list = products.filter(function(p){
+    if(invShopFilter !== 'all' && p.owner !== invShopFilter) return false;
+    if(invCatFilter && p.category !== invCatFilter) return false;
+    return true;
+  });
+
+  // Stats from filtered list
   var totB=0,totS=0,totR=0,totV=0;
-  products.forEach(function(p){totB+=(p.brought||0);totS+=(p.sold||0);var r=Math.max(0,(p.brought||0)-(p.sold||0));totR+=r;totV+=r*p.price;});
+  list.forEach(function(p){totB+=(p.brought||0);totS+=(p.sold||0);var r=Math.max(0,(p.brought||0)-(p.sold||0));totR+=r;totV+=r*p.price;});
   document.getElementById('inv-stats').innerHTML=
     '<div class="stat"><div class="slbl">Привезено</div><div class="sval">'+totB+' шт</div></div>'+
     '<div class="stat"><div class="slbl">Продано</div><div class="sval g">'+totS+' шт</div></div>'+
     '<div class="stat"><div class="slbl">Остаток</div><div class="sval">'+totR+' шт</div></div>'+
     '<div class="stat"><div class="slbl">Стоимость остатка</div><div class="sval">'+fmt(totV)+'</div></div>';
-  document.getElementById('inv-body').innerHTML=products.map(function(p){
+
+  document.getElementById('inv-body').innerHTML = list.map(function(p){
     var remain=Math.max(0,(p.brought||0)-(p.sold||0));
     var cls=remain===0&&p.brought>0?'zero':remain<=2&&p.brought>0?'warn':'ok';
     var lbl=remain===0&&p.brought>0?'✓ всё':remain+' шт';
     return '<div class="inv-row">'+
-      '<div><div style="font-weight:700;font-size:13px">'+p.name+'</div><span class="bdg '+(p.owner||'k')[0]+'" style="font-size:9px;padding:1px 6px">'+ownerLabel(p.owner)+'</span></div>'+
+      '<div>'+
+        '<div style="font-weight:700;font-size:13px">'+p.name+'</div>'+
+        '<span class="bdg '+(p.owner||'k')[0]+'" style="font-size:9px;padding:1px 6px">'+ownerLabel(p.owner)+'</span>'+
+        (p.category?'<span class="cat-tag '+(p.owner==='masha'?'m':'k')+'" style="margin-left:4px">'+p.category+'</span>':'')+
+      '</div>'+
       '<div style="text-align:right;font-family:Unbounded,sans-serif;font-size:.75rem;font-weight:600;color:var(--k)">'+fmt(p.price)+'</div>'+
       '<input class="inv-input" type="number" value="'+(p.brought||'')+'" min="0" placeholder="0" onchange="updateBrought(\''+p.fbKey+'\',this.value)">'+
-      '<div style="text-align:center;font-weight:700;color:var(--muted)">'+( p.sold||0)+'</div>'+
+      '<div style="text-align:center;font-weight:700;color:var(--muted)">'+(p.sold||0)+'</div>'+
       '<div class="remain '+cls+'">'+lbl+'</div>'+
     '</div>';
-  }).join('');
+  }).join('') || '<div class="empty">Нет товаров</div>';
 }
 function syncAvailability(p){
   if(!p || !p.fbKey) return;
@@ -4845,6 +4945,10 @@ startListeners = function(){
 var _origGoTab2 = goTab;
 goTab = function(name, btn){
   _origGoTab2(name, btn);
+  if(name==='inventory'){
+    renderInvCatFilters();
+    renderInventory();
+  }
   if(name==='expenses'){
     renderExpenses();
     renderExpStats();
