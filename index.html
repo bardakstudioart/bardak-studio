@@ -5047,6 +5047,20 @@ renderCatalog = function(){
               '<option value="preorder" '+(p.availability==='preorder'?'selected':'')+'>📋 Предзаказ</option>'+
             '</select>'+
           '</div>'+
+          '<div style="margin-top:4px">'+
+            '<select class="cat-category-sel fi" style="font-size:10px;padding:2px 6px;border-radius:20px;width:auto;color:var(--muted)">'+
+              '<option value="">— категория —</option>'+
+              (function(){
+                var cats = p.owner==='masha' ?
+                  ['Браслеты (стекло)','Браслеты (камень)','Ожерелья (стекло)','Ожерелья (камень)','Подвески','Эпоксидка','Прочее'] :
+                  ['Стикеры','Наклейки','Значки','Брелоки','Магниты','Прочее'];
+                return cats.map(function(c){
+                  return '<option value="'+c+'"'+(p.category===c?' selected':'')+'>'+c+'</option>';
+                }).join('');
+              })()+
+              '<option value="__custom">✏️ Своя...</option>'+
+            '</select>'+
+          '</div>'+
         '</div>'+
         '<div style="display:flex;flex-direction:column;gap:4px">'+
           '<button class="btn ic photo-btn" title="Изменить фото" style="font-size:14px">🖼</button>'+
@@ -5078,6 +5092,26 @@ renderCatalog = function(){
         this.className = 'avail-sel '+this.value;
         db.ref('products/'+p.fbKey).update({availability:this.value});
         toast('Статус обновлён','ok');
+      };
+    }
+
+    var catSel = div.querySelector('.cat-category-sel');
+    if(catSel){
+      catSel.onchange = function(){
+        if(this.value === '__custom'){
+          var custom = prompt('Введите категорию:');
+          if(custom){
+            var opt = document.createElement('option');
+            opt.value = custom; opt.textContent = custom; opt.selected = true;
+            this.insertBefore(opt, this.lastElementChild);
+            this.value = custom;
+            updateCategory(p.fbKey, custom);
+          } else {
+            this.value = p.category||'';
+          }
+        } else {
+          updateCategory(p.fbKey, this.value);
+        }
       };
     }
 
