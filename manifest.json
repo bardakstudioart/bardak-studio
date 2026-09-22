@@ -2,7 +2,7 @@
   "name": "Bardak Studio",
   "short_name": "Bardak",
   "description": "Панель управления Bardak Studio & SealMary",
-  "start_url": "/bardak-studio/",
+  "start_url": "/bardak-studio/index.html",
   "scope": "/bardak-studio/",
   "display": "standalone",
   "background_color": "#1A1A1A",
@@ -13,10 +13,16 @@
       "src": "icon.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "icon.png",
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
