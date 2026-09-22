@@ -5098,9 +5098,11 @@ renderCatalog = function(){
     var catSel = div.querySelector('.cat-category-sel');
     if(catSel){
       catSel.onchange = function(){
-        if(this.value === '__custom'){
+        var val = this.value;
+        if(val === '__custom'){
           var custom = prompt('Введите категорию:');
-          if(custom){
+          if(custom && custom.trim()){
+            custom = custom.trim();
             var opt = document.createElement('option');
             opt.value = custom; opt.textContent = custom; opt.selected = true;
             this.insertBefore(opt, this.lastElementChild);
@@ -5109,8 +5111,8 @@ renderCatalog = function(){
           } else {
             this.value = p.category||'';
           }
-        } else {
-          updateCategory(p.fbKey, this.value);
+        } else if(val && val !== '') {
+          updateCategory(p.fbKey, val);
         }
       };
     }
@@ -6103,10 +6105,13 @@ function addCategoryBadgesToCards(){
 
 // Also allow editing category on existing products
 function updateCategory(fbKey, category){
-  db.ref('products/'+fbKey).update({category: category});
+  if(!fbKey || category === '__custom') return;
+  db.ref('products/'+fbKey).update({category: category||null});
   var p = products.find(function(x){ return x.fbKey===fbKey; });
-  if(p) p.category = category;
-  toast('Категория обновлена','ok');
+  if(p) p.category = category||null;
+  toast('Категория сохранена','ok');
+  // Refresh category filter buttons without full re-render
+  renderCatCategoryFilters();
 }
 
 // Init
