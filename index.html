@@ -3185,6 +3185,7 @@ function startScanner(){
       stopScanner();
       showScanResult(p);
       statusEl.innerHTML = '<span style="color:var(--k)">✅ Считано успешно!</span>';
+      setTimeout(function(){ statusEl.innerHTML = ''; }, 1500);
     }, 1500);
   });
 }
@@ -3409,6 +3410,51 @@ function renderAllSales(){
   var log=document.getElementById('all-log');
   if(!sales.length){log.innerHTML='<div class="empty">Нет продаж</div>';return;}
 
+  // Overall product stats
+  var productMap = {};
+  sales.forEach(function(s){
+    if(!productMap[s.name]) productMap[s.name] = {count:0, total:0, owner:s.owner};
+    productMap[s.name].count++;
+    productMap[s.name].total += s.price;
+  });
+  var allTopProducts = Object.keys(productMap)
+    .map(function(n){ return {name:n, count:productMap[n].count, total:productMap[n].total, owner:productMap[n].owner}; })
+    .sort(function(a,b){ return b.count - a.count; });
+
+  // AI-style advice
+  var bestSeller = allTopProducts[0];
+  var worstSeller = allTopProducts[allTopProducts.length-1];
+  var avgPerSale = Math.round(total / sales.length);
+  var advice = '';
+  if(bestSeller && bestSeller.count >= 3){
+    advice += '🔥 <b>'+bestSeller.name+'</b> — хит продаж! Берите больше на следующую ярмарку. ';
+  }
+  if(worstSeller && worstSeller !== bestSeller && worstSeller.count === 1){
+    advice += '📦 <b>'+worstSeller.name+'</b> продаётся слабо — возможно стоит снизить цену или привезти меньше. ';
+  }
+  if(avgPerSale > 0){
+    advice += '💰 Средний чек: <b>'+fmt(avgPerSale)+'</b>.';
+  }
+
+  var overallHtml = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1rem">'+
+    '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">📊 Статистика по товарам (все продажи)</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">'+
+    allTopProducts.slice(0,10).map(function(p, i){
+      var pct = Math.round(p.count/sales.length*100);
+      var medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+      return '<div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:12px">'+
+        medal+' <b>'+p.name+'</b>'+
+        ' <span style="color:var(--muted)">×'+p.count+'</span>'+
+        ' <span style="color:var(--k);font-weight:700">'+fmt(p.total)+'</span>'+
+        ' <span style="font-size:10px;color:var(--muted)">('+pct+'%)</span>'+
+      '</div>';
+    }).join('')+
+    '</div>'+
+    (advice ? '<div style="background:var(--kl);border-radius:8px;padding:.6rem .85rem;font-size:12px;line-height:1.6;color:var(--k2)">💡 '+advice+'</div>' : '')+
+  '</div>';
+
+  log.innerHTML = overallHtml;
+
   // Group by date
   var byDate = {};
   var dateOrder = [];
@@ -3443,9 +3489,32 @@ function renderAllSales(){
       '</div>';
     }).join('');
 
+    // Top products for the day
+    var dayProductMap = {};
+    daySales.forEach(function(s){
+      if(!dayProductMap[s.name]) dayProductMap[s.name] = {count:0, total:0, owner:s.owner};
+      dayProductMap[s.name].count++;
+      dayProductMap[s.name].total += s.price;
+    });
+    var dayTopProducts = Object.keys(dayProductMap)
+      .map(function(name){ return {name:name, count:dayProductMap[name].count, total:dayProductMap[name].total, owner:dayProductMap[name].owner}; })
+      .sort(function(a,b){ return b.count - a.count; });
+
+    var topHtml = '<div style="padding:.5rem .75rem;background:#FAFAF8;border-top:1px solid var(--border)">';
+    topHtml += '<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Топ товаров дня</div>';
+    topHtml += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+    dayTopProducts.forEach(function(p, i){
+      var medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+      topHtml += '<div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:11px">'+
+        medal+' <b>'+p.name+'</b> × '+p.count+
+        ' <span style="color:var(--k);font-weight:700">'+fmt(p.total)+'</span>'+
+      '</div>';
+    });
+    topHtml += '</div></div>';
+
     return '<div style="margin-bottom:1rem">'+
       // Day header
-      '<div style="display:flex;align-items:center;gap:10px;padding:.6rem 1rem;background:var(--bg);border-radius:10px;margin-bottom:4px;flex-wrap:wrap;gap:8px">'+
+      '<div style="display:flex;align-items:center;gap:10px;padding:.6rem 1rem;background:var(--bg);border-radius:10px 10px 0 0;flex-wrap:wrap;gap:8px">'+
         '<span style="font-family:Unbounded,sans-serif;font-size:.8rem;font-weight:700">'+dateKey+'</span>'+
         '<span style="font-size:12px;color:var(--muted)">'+daySales.length+' продаж</span>'+
         '<span style="font-family:Unbounded,sans-serif;font-size:.85rem;font-weight:700;color:var(--k);margin-left:auto">'+fmt(dayTotal)+'</span>'+
@@ -3455,8 +3524,10 @@ function renderAllSales(){
         (dayTonjan?'<span class="bdg tonjan" style="font-size:10px">📲 '+fmt(dayTonjan)+'</span>':'')+
         (dayCard?'<span class="bdg card" style="font-size:10px">💳 '+fmt(dayCard)+'</span>':'')+
       '</div>'+
+      // Top products
+      topHtml+
       // Day rows
-      '<div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">'+rows+'</div>'+
+      '<div style="border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;overflow:hidden">'+rows+'</div>'+
     '</div>';
   }).join('');
 }
