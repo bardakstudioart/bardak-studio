@@ -6019,35 +6019,44 @@ function renderCatCategoryFilters(){
   if(!el) return;
   el.innerHTML = '';
 
-  // Get categories for current filter
-  var cats = [];
-  if(catFilter === 'katya') cats = CATS.katya;
-  else if(catFilter === 'masha') cats = CATS.masha;
+  // Start with preset categories for current shop filter
+  var presetCats = [];
+  if(catFilter === 'katya') presetCats = CATS.katya.slice();
+  else if(catFilter === 'masha') presetCats = CATS.masha.slice();
   else {
-    // Show all + from products
-    var allCats = {};
-    products.forEach(function(p){ if(p.category) allCats[p.category]=true; });
-    cats = Object.keys(allCats);
+    presetCats = CATS.katya.concat(CATS.masha);
   }
 
-  // Also add categories from products not in preset list
-  var extraCats = {};
-  products.forEach(function(p){
-    if(p.category && cats.indexOf(p.category) < 0) extraCats[p.category] = true;
-  });
-  cats = cats.concat(Object.keys(extraCats));
+  // Get filtered products
+  var filteredProducts = catFilter==='all' ? products :
+    products.filter(function(p){ return p.owner===catFilter; });
 
-  if(!cats.length){ el.style.display='none'; return; }
+  // Add ALL categories actually used in products (including custom ones)
+  var usedCats = {};
+  filteredProducts.forEach(function(p){
+    if(p.category) usedCats[p.category] = true;
+  });
+
+  // Merge: preset first (if used), then custom ones not in preset
+  var finalCats = [];
+  presetCats.forEach(function(c){
+    if(usedCats[c] && finalCats.indexOf(c) < 0) finalCats.push(c);
+  });
+  Object.keys(usedCats).forEach(function(c){
+    if(finalCats.indexOf(c) < 0) finalCats.push(c);
+  });
+
+  if(!finalCats.length){ el.style.display='none'; return; }
   el.style.display = 'flex';
 
-  // "All" button
+  // "All categories" button
   var allBtn = document.createElement('button');
   allBtn.className = 'cat-filter-btn' + (catCategoryFilter===''?' on':'');
   allBtn.textContent = 'Все категории';
   allBtn.onclick = function(){ catCategoryFilter=''; renderCatCategoryFilters(); renderCatalog(); };
   el.appendChild(allBtn);
 
-  cats.forEach(function(c){
+  finalCats.forEach(function(c){
     var btn = document.createElement('button');
     btn.className = 'cat-filter-btn' + (catCategoryFilter===c?' on':'');
     btn.textContent = c;
