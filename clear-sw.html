@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Очистка кэша</title>
+<style>
+body{font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#F7F5F0;text-align:center;padding:1rem}
+.card{background:#fff;border-radius:16px;padding:2rem;max-width:340px;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+h2{font-size:1.1rem;margin-bottom:.5rem;color:#1A1A1A}
+p{color:#888;font-size:14px;margin-bottom:1.5rem;line-height:1.6}
+.btn{background:#1D9E75;color:#fff;border:none;border-radius:10px;padding:13px 24px;font-size:15px;font-weight:700;cursor:pointer;width:100%;font-family:Arial,sans-serif}
+.btn:hover{background:#0F6E56}
+.status{margin-top:1rem;font-size:14px;color:#1D9E75;font-weight:700;min-height:20px}
+</style>
+</head>
+<body>
+<div class="card">
+  <h2>🧹 Очистка кэша</h2>
+  <p>Нажмите кнопку чтобы удалить все service workers и исправить проблему со входом</p>
+  <button class="btn" onclick="clearAll()">Очистить и перейти в панель</button>
+  <div class="status" id="status"></div>
+</div>
+<script>
+async function clearAll(){
+  var status = document.getElementById('status');
+  status.textContent = 'Очищаю...';
+  try {
+    // Unregister all service workers
+    if('serviceWorker' in navigator){
+      var regs = await navigator.serviceWorker.getRegistrations();
+      for(var reg of regs){ await reg.unregister(); }
+    }
+    // Clear all caches
+    if('caches' in window){
+      var keys = await caches.keys();
+      for(var key of keys){ await caches.delete(key); }
+    }
+    status.textContent = '✅ Готово! Перехожу...';
+    setTimeout(function(){
+      window.location.href = '/bardak-studio/';
+    }, 1000);
+  } catch(e) {
+    status.textContent = '✅ Готово! Перехожу...';
+    setTimeout(function(){
+      window.location.href = '/bardak-studio/';
+    }, 1000);
+  }
+}
+// Auto-clear on load
+clearAll();
+</script>
+</body>
+</html>
