@@ -5698,14 +5698,6 @@ function printEnvelope(order){
     <div class="recipient-address">${order.address}</div>
   </div>
 </div>
-<script>
-// Unregister any old service workers that may have broken the app
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.getRegistrations().then(function(regs){
-    regs.forEach(function(reg){ reg.unregister(); });
-  });
-}
-</script>
 </body>
 </html>`);
   win.document.close();
@@ -6385,14 +6377,6 @@ setTimeout(function(){
   renderCatCategoryFilters();
 }, 800);
 
-</script>
-<script>
-// Unregister any old service workers that may have broken the app
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.getRegistrations().then(function(regs){
-    regs.forEach(function(reg){ reg.unregister(); });
-  });
-}
 </script>
 </body>
 </html>
