@@ -3166,16 +3166,15 @@ function startScanner(){
 
     // Show "reading" state with countdown
     var statusEl = document.getElementById('scan-status');
-    statusEl.innerHTML = '<span style="color:var(--gold)">⏳ Считываю: <b>'+p.name+'</b>...</span>';
+    statusEl.innerHTML = '<span style="color:var(--gold)">⏳ Считываю...</span>';
 
-    // Visual countdown ring
     var count = 0;
-    var maxCount = 6; // ~1.5 sec at 250ms intervals
+    var maxCount = 6;
     var dots = ['▐','▌','▀','▄'];
 
     var tickInterval = setInterval(function(){
       count++;
-      statusEl.innerHTML = '<span style="color:var(--gold)">'+dots[count%dots.length]+' Считываю: <b>'+p.name+'</b> ('+Math.ceil((maxCount-count)*250/1000)+'с)</span>';
+      statusEl.innerHTML = '<span style="color:var(--gold)">'+dots[count%dots.length]+' Считываю...</span>';
     }, 250);
 
     window._scanTimer = setTimeout(function(){
@@ -3183,10 +3182,9 @@ function startScanner(){
       window._scanPending = false;
       window._scanPendingCode = null;
       window._scanTimer = null;
-      // Confirm — stop scanner and show result
       stopScanner();
       showScanResult(p);
-      statusEl.innerHTML = '<span style="color:var(--k)">✅ Считано: <b>'+p.name+'</b></span>';
+      statusEl.innerHTML = '<span style="color:var(--k)">✅ Считано успешно!</span>';
     }, 1500);
   });
 }
