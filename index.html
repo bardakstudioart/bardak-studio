@@ -5186,23 +5186,33 @@ renderCatalog = function(){
     (function(k,id,name){
       setTimeout(function(){
         try{
-          JsBarcode('#bc-'+k,id,{format:'CODE128',width:1.6,height:48,displayValue:false,margin:4,background:'#ffffff',lineColor:'#1A1A1A'});
+          JsBarcode('#bc-'+k,id,{format:'CODE128',width:1.6,height:48,displayValue:true,margin:4,background:'#ffffff',lineColor:'#1A1A1A',fontSize:10,font:'Arial'});
           // Bind download button
           var dlBtn = div.querySelector('.dl-bc-btn');
           if(dlBtn){
             dlBtn.onclick = function(){
-              // Create a larger canvas for better print quality
               var srcCanvas = document.getElementById('bc-'+k);
               if(!srcCanvas) return;
+              // Always get fresh price from products array
+              var currentProduct = products.find(function(x){ return x.id===id; });
+              var currentPrice = currentProduct ? currentProduct.price : 0;
+              var priceText = currentPrice ? Math.round(currentPrice).toLocaleString('ru-RU') + ' \u20a9' : '';
+
               var printCanvas = document.createElement('canvas');
               printCanvas.width = srcCanvas.width;
-              printCanvas.height = srcCanvas.height;
+              printCanvas.height = srcCanvas.height + (priceText ? 18 : 0);
               var ctx = printCanvas.getContext('2d');
               ctx.fillStyle = '#ffffff';
               ctx.fillRect(0,0,printCanvas.width,printCanvas.height);
               ctx.drawImage(srcCanvas,0,0);
+              if(priceText){
+                ctx.fillStyle = '#1a1a1a';
+                ctx.font = 'bold 11px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(priceText, printCanvas.width/2, srcCanvas.height + 13);
+              }
               var a = document.createElement('a');
-              a.download = id+'_'+name.replace(/[^a-zA-Zа-яА-Я0-9]/g,'_')+'.png';
+              a.download = id + '.png';
               a.href = printCanvas.toDataURL('image/png');
               a.click();
               toast('Штрихкод сохранён','ok');
