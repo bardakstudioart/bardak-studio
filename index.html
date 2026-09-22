@@ -5698,6 +5698,11 @@ function printEnvelope(order){
     <div class="recipient-address">${order.address}</div>
   </div>
 </div>
+<script>
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js');
+}
+</script>
 </body>
 </html>`);
   win.document.close();
@@ -6377,6 +6382,11 @@ setTimeout(function(){
   renderCatCategoryFilters();
 }, 800);
 
+</script>
+<script>
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js');
+}
 </script>
 </body>
 </html>
