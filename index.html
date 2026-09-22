@@ -2108,7 +2108,6 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
 .multi-search{font-family:"Nunito",sans-serif;font-size:14px;border:1px solid var(--border);border-radius:9px;padding:8px 12px;width:100%;outline:none;margin-bottom:8px}
 .multi-search:focus{border-color:var(--k)}
 .multi-list{max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:9px;background:white}
-.multi-group-hd{position:sticky;top:0;z-index:1;background:#FAFAF8;border-bottom:1px solid var(--border);padding:6px 12px;font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
 .multi-item{display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s}
 .multi-item:last-child{border-bottom:none}
 .multi-item:hover{background:#F7F5F0}
@@ -2330,6 +2329,14 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
 .var-item.unavail:hover{border-color:var(--border);background:#fff}
 .var-add-form{margin-top:1rem;padding-top:1rem;border-top:1px dashed var(--border)}
 .var-add-form h4{font-family:'Unbounded',sans-serif;font-size:.75rem;font-weight:600;color:var(--muted);margin-bottom:10px}
+
+/* CATEGORIES */
+.cat-tag{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--bg);border:1px solid var(--border);color:var(--muted);white-space:nowrap}
+.cat-tag.k{background:var(--kl);color:var(--k2);border-color:var(--k)}
+.cat-tag.m{background:var(--ml);color:var(--m2);border-color:var(--m)}
+.cat-filter-btn{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:#fff;cursor:pointer;transition:all .15s;white-space:nowrap}
+.cat-filter-btn:hover{background:var(--bg)}
+.cat-filter-btn.on{background:var(--text);color:#fff;border-color:var(--text)}
 </style>
 </head>
 <body>
@@ -2550,9 +2557,22 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
       </div>
       <div>
         <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">Кто</div>
-        <select class="fi" id="new-owner">
+        <select class="fi" id="new-owner" onchange="updateCatOptions(this.value)">
           <option value="katya">Bardak Studio</option>
           <option value="masha">SealMary</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">Категория</div>
+        <select class="fi" id="new-category" style="width:180px">
+          <option value="">— выберите —</option>
+          <option value="Стикеры">Стикеры</option>
+          <option value="Наклейки">Наклейки</option>
+          <option value="Значки">Значки</option>
+          <option value="Брелоки">Брелоки</option>
+          <option value="Магниты">Магниты</option>
+          <option value="Прочее">Прочее</option>
+          <option value="__custom">✏️ Своя...</option>
         </select>
       </div>
       <div>
@@ -2613,6 +2633,9 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
       <option value="za">Я → А</option>
     </select>
     <button class="btn sm red" onclick="loadDefaultProducts()" style="margin-left:auto">↺ Загрузить все товары</button>
+  </div>
+  <div id="cat-category-filters" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:1rem;min-height:28px">
+    <!-- Category filter buttons rendered by JS -->
   </div>
   <div class="cat-grid" id="cat-grid"><div class="empty" style="grid-column:1/-1">Загрузка...</div></div>
 </div>
@@ -2721,15 +2744,6 @@ body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);font
 
 <!-- SETTINGS -->
 <div id="pg-settings" class="pg">
-  <div class="settings-section">
-    <h3>📥 Импорт архива</h3>
-    <div class="setting-row">
-      <span class="setting-lbl">Ярмарки 2026 (Dodam Market, Bbom, Христианский Фестиваль)</span>
-      <button class="btn sm grn" id="import-fairs-btn" onclick="importFairs2026()">📥 Импортировать архив ярмарок 2026</button>
-    </div>
-    <div style="font-size:12px;color:var(--muted);margin-top:4px">Добавит 3 ивента и 203 продажи из старой таблицы Excel. Нажимайте один раз — повторный импорт задвоит данные.</div>
-  </div>
-
   <div class="settings-section">
     <h3>⚙️ Backend сервер</h3>
     <div class="setting-row">
@@ -3200,47 +3214,27 @@ function renderMultiList(){
   var list=query?products.filter(function(p){return p.name.toLowerCase().indexOf(query)>=0;}):products;
   var el=document.getElementById('multi-list');
   if(!list.length){el.innerHTML='<div class="empty">Ничего не найдено</div>';return;}
-
-  // Group by owner, sort groups by their label (Bardak Studio / SealMary),
-  // and sort products inside each group alphabetically (ru locale).
-  var groups={};
-  list.forEach(function(p){
-    var label=ownerLabel(p.owner);
-    if(!groups[label])groups[label]=[];
-    groups[label].push(p);
-  });
-  var groupNames=Object.keys(groups).sort(function(a,b){return a.localeCompare(b,'ru');});
-  groupNames.forEach(function(g){
-    groups[g].sort(function(a,b){return a.name.localeCompare(b.name,'ru');});
-  });
-
   el.innerHTML='';
-  groupNames.forEach(function(g){
-    var hd=document.createElement('div');
-    hd.className='multi-group-hd';
-    hd.textContent=g;
-    el.appendChild(hd);
-    groups[g].forEach(function(p){
-      var qty=cart[p.id]||0;
-      var div=document.createElement('div');
-      div.className='multi-item'+(qty>0?' selected':'');
-      div.id='mi-'+p.id;
-      var ownerShort=ownerLabel(p.owner).slice(0,2);
-      var ownerClass=p.owner[0];
-      div.innerHTML='<div class="multi-item-owner bdg '+ownerClass+'">'+ownerShort+'</div>'+
-        '<div class="multi-item-name">'+p.name+'</div>'+
-        '<div class="multi-item-price">'+fmt(p.price)+'</div>'+
-        '<div class="multi-qty">'+
-          '<button class="qty-btn" id="qm-'+p.id+'">-</button>'+
-          '<span class="qty-val" id="qty-'+p.id+'">'+qty+'</span>'+
-          '<button class="qty-btn" id="qp-'+p.id+'">+</button>'+
-        '</div>';
-      el.appendChild(div);
-      (function(pid){
-        document.getElementById('qm-'+pid).onclick=function(e){e.stopPropagation();changeQty(pid,-1);};
-        document.getElementById('qp-'+pid).onclick=function(e){e.stopPropagation();changeQty(pid,1);};
-      })(p.id);
-    });
+  list.forEach(function(p){
+    var qty=cart[p.id]||0;
+    var div=document.createElement('div');
+    div.className='multi-item'+(qty>0?' selected':'');
+    div.id='mi-'+p.id;
+    var ownerShort=ownerLabel(p.owner).slice(0,2);
+    var ownerClass=p.owner[0];
+    div.innerHTML='<div class="multi-item-owner bdg '+ownerClass+'">'+ownerShort+'</div>'+
+      '<div class="multi-item-name">'+p.name+'</div>'+
+      '<div class="multi-item-price">'+fmt(p.price)+'</div>'+
+      '<div class="multi-qty">'+
+        '<button class="qty-btn" id="qm-'+p.id+'">-</button>'+
+        '<span class="qty-val" id="qty-'+p.id+'">'+qty+'</span>'+
+        '<button class="qty-btn" id="qp-'+p.id+'">+</button>'+
+      '</div>';
+    el.appendChild(div);
+    (function(pid){
+      document.getElementById('qm-'+pid).onclick=function(e){e.stopPropagation();changeQty(pid,-1);};
+      document.getElementById('qp-'+pid).onclick=function(e){e.stopPropagation();changeQty(pid,1);};
+    })(p.id);
   });
 }
 function filterMultiList(){renderMultiList();}
@@ -5022,7 +5016,10 @@ renderCatalog = function(){
           '<button class="btn ic del-btn" style="color:var(--muted)">✕</button>'+
         '</div>'+
       '</div>'+
-      '<div class="barcode-wrap"><canvas id="bc-'+key+'"></canvas></div>';
+      '<div class="barcode-wrap" style="display:flex;align-items:center;gap:8px">'+
+        '<canvas id="bc-'+key+'"></canvas>'+
+        '<button class="btn ic dl-bc-btn" title="Сохранить штрихкод" style="font-size:14px;flex-shrink:0">💾</button>'+
+      '</div>';
 
     // Bind events
     var nameInput = div.querySelector('.cat-name-input');
@@ -5067,11 +5064,39 @@ renderCatalog = function(){
     div.querySelector('.del-btn').onclick = function(){ deleteProduct(p.fbKey); };
 
     grid.appendChild(div);
-    (function(k,id){
+    (function(k,id,name){
       setTimeout(function(){
-        try{JsBarcode('#bc-'+k,id,{format:'CODE128',width:1.6,height:48,displayValue:false,margin:4,background:'#ffffff',lineColor:'#1A1A1A'});}catch(e){}
+        try{
+          JsBarcode('#bc-'+k,id,{format:'CODE128',width:1.6,height:48,displayValue:true,margin:4,background:'#ffffff',lineColor:'#1A1A1A',fontSize:10,font:'Nunito'});
+          // Bind download button
+          var dlBtn = div.querySelector('.dl-bc-btn');
+          if(dlBtn){
+            dlBtn.onclick = function(){
+              // Create a larger canvas for better print quality
+              var srcCanvas = document.getElementById('bc-'+k);
+              if(!srcCanvas) return;
+              var printCanvas = document.createElement('canvas');
+              printCanvas.width = srcCanvas.width;
+              printCanvas.height = srcCanvas.height + 20;
+              var ctx = printCanvas.getContext('2d');
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(0,0,printCanvas.width,printCanvas.height);
+              ctx.drawImage(srcCanvas,0,0);
+              // Add product name below
+              ctx.fillStyle = '#1a1a1a';
+              ctx.font = '10px Arial';
+              ctx.textAlign = 'center';
+              ctx.fillText(name.length>20?name.slice(0,20)+'…':name, printCanvas.width/2, printCanvas.height-4);
+              var a = document.createElement('a');
+              a.download = id+'_'+name.replace(/[^a-zA-Zа-яА-Я0-9]/g,'_')+'.png';
+              a.href = printCanvas.toDataURL('image/png');
+              a.click();
+              toast('Штрихкод сохранён','ok');
+            };
+          }
+        }catch(e){}
       },50);
-    })(key,p.id);
+    })(key,p.id,p.name);
   });
 };
 
@@ -5321,6 +5346,14 @@ function printEnvelope(order){
 .var-item.unavail:hover{border-color:var(--border);background:#fff}
 .var-add-form{margin-top:1rem;padding-top:1rem;border-top:1px dashed var(--border)}
 .var-add-form h4{font-family:'Unbounded',sans-serif;font-size:.75rem;font-weight:600;color:var(--muted);margin-bottom:10px}
+
+/* CATEGORIES */
+.cat-tag{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--bg);border:1px solid var(--border);color:var(--muted);white-space:nowrap}
+.cat-tag.k{background:var(--kl);color:var(--k2);border-color:var(--k)}
+.cat-tag.m{background:var(--ml);color:var(--m2);border-color:var(--m)}
+.cat-filter-btn{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:#fff;cursor:pointer;transition:all .15s;white-space:nowrap}
+.cat-filter-btn:hover{background:var(--bg)}
+.cat-filter-btn.on{background:var(--text);color:#fff;border-color:var(--text)}
 </style>
 </head>
 <body>
@@ -5772,37 +5805,242 @@ setTimeout(function(){
 }, 500);
 
 
-// ===== FAIRS 2026 ARCHIVE IMPORT =====
-var FAIRS_2026_EVENTS = [{"key": "evt_dodam_market", "name": "Dodam Market", "startDate": "2026-03-27", "endDate": "2026-03-29"}, {"key": "evt_festival_the_bbom", "name": "Festival The Bbom", "startDate": "2026-04-04", "endDate": "2026-04-05"}, {"key": "evt_христианский_фестиваль_ансан", "name": "Христианский Фестиваль (Ансан)", "startDate": "2026-05-09", "endDate": "2026-05-09"}];
-var FAIRS_2026_SALES = [{"name": "Браслет (роз.кварц)", "owner": "masha", "price": 7000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774612800000, "time": "2026-03-27T12:00:00"}, {"name": "Браслет (бирюза)", "owner": "masha", "price": 8000.0, "pay": "cash", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774612860000, "time": "2026-03-27T12:01:00"}, {"name": "Стикеры (сет, 5 шт)", "owner": "katya", "price": 7000.0, "pay": "cash", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774612920000, "time": "2026-03-27T12:02:00"}, {"name": "Браслет (авантюрин) + Браслет (лабрадорит) + Браслет (обсидиан+авантюрин)", "owner": "masha", "price": 13000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774612980000, "time": "2026-03-27T12:03:00"}, {"name": "Ловец солнца", "owner": "masha", "price": 5000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774613040000, "time": "2026-03-27T12:04:00"}, {"name": "Шпильки 2 шт", "owner": "masha", "price": 9000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774613100000, "time": "2026-03-27T12:05:00"}, {"name": "Браслет (авантюрин)", "owner": "masha", "price": 6000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774613160000, "time": "2026-03-27T12:06:00"}, {"name": "Стикеры (ивент)", "owner": "katya", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774699620000, "time": "2026-03-28T12:07:00"}, {"name": "Шпилька (ивент)", "owner": "masha", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774699680000, "time": "2026-03-28T12:08:00"}, {"name": "Браслет + Браслет + Браслет + Браслет", "owner": "masha", "price": 25000.0, "pay": "cash", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774699740000, "time": "2026-03-28T12:09:00"}, {"name": "Стикеры (сет, 5 шт)", "owner": "katya", "price": 7000.0, "pay": "cash", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774699800000, "time": "2026-03-28T12:10:00"}, {"name": "Шпилька", "owner": "masha", "price": 4000.0, "pay": "cash", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774699860000, "time": "2026-03-28T12:11:00"}, {"name": "Шпилька", "owner": "masha", "price": 6000.0, "pay": "cash", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774699920000, "time": "2026-03-28T12:12:00"}, {"name": "Браслет-чокер", "owner": "masha", "price": 10000.0, "pay": "cash", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774699980000, "time": "2026-03-28T12:13:00"}, {"name": "Магнит Черепашка + Заколка", "owner": "masha", "price": 8000.0, "pay": "cash", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774700040000, "time": "2026-03-28T12:14:00"}, {"name": "Шпилька + Шпилька + Шпилька + Шпилька", "owner": "masha", "price": 16000.0, "pay": "cash", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774700100000, "time": "2026-03-28T12:15:00"}, {"name": "Миска Ракушка + Миска Ракушка", "owner": "masha", "price": 7000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774700160000, "time": "2026-03-28T12:16:00"}, {"name": "Шпилька (эпокс)", "owner": "masha", "price": 3000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774700220000, "time": "2026-03-28T12:17:00"}, {"name": "Миска Ракушка + Магнит Черепашка + Магнит Черепашка", "owner": "masha", "price": 14000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774700280000, "time": "2026-03-28T12:18:00"}, {"name": "Заколка (Сакура)", "owner": "masha", "price": 6000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774700340000, "time": "2026-03-28T12:19:00"}, {"name": "Заколка Рыбка + Заколка Рыбка + Заколка Рыбка + Браслет + Магнит Черепашка", "owner": "masha", "price": 20000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774700400000, "time": "2026-03-28T12:20:00"}, {"name": "Браслет", "owner": "masha", "price": 7000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774700460000, "time": "2026-03-28T12:21:00"}, {"name": "Стикер Ёни (Весенний)", "owner": "katya", "price": 3000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774700520000, "time": "2026-03-28T12:22:00"}, {"name": "Браслет + Браслет + Браслет", "owner": "masha", "price": 15000.0, "pay": "cash", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774786980000, "time": "2026-03-29T12:23:00"}, {"name": "Ловец солнца", "owner": "masha", "price": 5000.0, "pay": "cash", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774787040000, "time": "2026-03-29T12:24:00"}, {"name": "Браслет + Браслет + Браслет", "owner": "masha", "price": 10000.0, "pay": "cash", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774787100000, "time": "2026-03-29T12:25:00"}, {"name": "Браслет", "owner": "masha", "price": 10000.0, "pay": "cash", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774787160000, "time": "2026-03-29T12:26:00"}, {"name": "Шпилька + Шпилька", "owner": "masha", "price": 10000.0, "pay": "cash", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774787220000, "time": "2026-03-29T12:27:00"}, {"name": "Сережки Сакура + Сережки Сакура + Сережки Тюлень + Браслет", "owner": "masha", "price": 20000.0, "pay": "cash", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774787280000, "time": "2026-03-29T12:28:00"}, {"name": "Стикеры (сет, 5 шт) + Брелок Котик", "owner": "katya", "price": 10000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774787340000, "time": "2026-03-29T12:29:00"}, {"name": "Браслет + Браслет", "owner": "masha", "price": 10000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774787400000, "time": "2026-03-29T12:30:00"}, {"name": "Брелок (Дерпи)", "owner": "masha", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774787460000, "time": "2026-03-29T12:31:00"}, {"name": "Магнит Черепашка", "owner": "masha", "price": 5000.0, "pay": "cash", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774787520000, "time": "2026-03-29T12:32:00"}, {"name": "Браслет + Брелок Тюлень", "owner": "masha", "price": 6000.0, "pay": "cash", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774787580000, "time": "2026-03-29T12:33:00"}, {"name": "Подвеска + Подвеска + Браслет", "owner": "masha", "price": 30000.0, "pay": "cash", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774787640000, "time": "2026-03-29T12:34:00"}, {"name": "Браслет", "owner": "masha", "price": 10000.0, "pay": "cash", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774787700000, "time": "2026-03-29T12:35:00"}, {"name": "Браслет + Подвеска", "owner": "masha", "price": 30000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774787760000, "time": "2026-03-29T12:36:00"}, {"name": "Браслет + Браслет + Браслет", "owner": "masha", "price": 20000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774787820000, "time": "2026-03-29T12:37:00"}, {"name": "Браслет + Браслет + Браслет", "owner": "masha", "price": 10000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774787880000, "time": "2026-03-29T12:38:00"}, {"name": "Ловец солнца + Ловец солнца", "owner": "masha", "price": 11000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774787940000, "time": "2026-03-29T12:39:00"}, {"name": "Подвеска", "owner": "masha", "price": 15000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774788000000, "time": "2026-03-29T12:40:00"}, {"name": "Браслет", "owner": "masha", "price": 6000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_dodam_market", "eventName": "Dodam Market", "ts": 1774788060000, "time": "2026-03-29T12:41:00"}, {"name": "Браслет", "owner": "masha", "price": 5000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775304000000, "time": "2026-04-04T12:00:00"}, {"name": "Метал.шпилька", "owner": "masha", "price": 7000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775304060000, "time": "2026-04-04T12:01:00"}, {"name": "Браслет", "owner": "masha", "price": 7000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775304120000, "time": "2026-04-04T12:02:00"}, {"name": "Браслет (2 шт)", "owner": "masha", "price": 11000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775304180000, "time": "2026-04-04T12:03:00"}, {"name": "Браслет (2 шт)", "owner": "masha", "price": 10000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775304240000, "time": "2026-04-04T12:04:00"}, {"name": "Брелок (Дерпи)", "owner": "masha", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775304300000, "time": "2026-04-04T12:05:00"}, {"name": "Подвеска", "owner": "masha", "price": 7000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775304360000, "time": "2026-04-04T12:06:00"}, {"name": "Подвеска", "owner": "masha", "price": 10000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775304420000, "time": "2026-04-04T12:07:00"}, {"name": "Заколка (змейка)", "owner": "masha", "price": 1000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775304480000, "time": "2026-04-04T12:08:00"}, {"name": "Заколка (цветочек)", "owner": "masha", "price": 2000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775304540000, "time": "2026-04-04T12:09:00"}, {"name": "Баночка", "owner": "masha", "price": 6000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775304600000, "time": "2026-04-04T12:10:00"}, {"name": "Шпилька", "owner": "masha", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775304660000, "time": "2026-04-04T12:11:00"}, {"name": "Брелок (тюлень)", "owner": "masha", "price": 1000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775304720000, "time": "2026-04-04T12:12:00"}, {"name": "Ловец солнца", "owner": "masha", "price": 4000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775304780000, "time": "2026-04-04T12:13:00"}, {"name": "Брелок (Дерпи)", "owner": "masha", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775304840000, "time": "2026-04-04T12:14:00"}, {"name": "Брелок (Дерпи)", "owner": "masha", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775304900000, "time": "2026-04-04T12:15:00"}, {"name": "Брелок (Дерпи)", "owner": "masha", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775304960000, "time": "2026-04-04T12:16:00"}, {"name": "Ловец снов (стелко, зеленый)", "owner": "masha", "price": 15000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775305020000, "time": "2026-04-04T12:17:00"}, {"name": "Ловец солнца", "owner": "masha", "price": 8000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775305080000, "time": "2026-04-04T12:18:00"}, {"name": "Шпилька + брелок (тюлень)", "owner": "masha", "price": 4000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775305140000, "time": "2026-04-04T12:19:00"}, {"name": "Брелок (тюлень) (2 шт)", "owner": "masha", "price": 2000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775305200000, "time": "2026-04-04T12:20:00"}, {"name": "Заколка", "owner": "masha", "price": 1000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775305260000, "time": "2026-04-04T12:21:00"}, {"name": "Заколка", "owner": "masha", "price": 3000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775305320000, "time": "2026-04-04T12:22:00"}, {"name": "Магнит Черепашка", "owner": "masha", "price": 6000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775305380000, "time": "2026-04-04T12:23:00"}, {"name": "Браслет", "owner": "masha", "price": 5000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775305440000, "time": "2026-04-04T12:24:00"}, {"name": "Браслет", "owner": "masha", "price": 6000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775305500000, "time": "2026-04-04T12:25:00"}, {"name": "Браслет", "owner": "masha", "price": 10000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775305560000, "time": "2026-04-04T12:26:00"}, {"name": "Ловец Солнца", "owner": "masha", "price": 5871.0, "pay": "card", "receipt": true, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775305620000, "time": "2026-04-04T12:27:00"}, {"name": "Браслет", "owner": "masha", "price": 9770.0, "pay": "card", "receipt": true, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775305680000, "time": "2026-04-04T12:28:00"}, {"name": "Браслет", "owner": "masha", "price": 12701.0, "pay": "card", "receipt": true, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775305740000, "time": "2026-04-04T12:29:00"}, {"name": "Браслет", "owner": "masha", "price": 4925.0, "pay": "card", "receipt": true, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775305800000, "time": "2026-04-04T12:30:00"}, {"name": "Браслет", "owner": "masha", "price": 4925.0, "pay": "card", "receipt": true, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775305860000, "time": "2026-04-04T12:31:00"}, {"name": "Заколка", "owner": "masha", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775392320000, "time": "2026-04-05T12:32:00"}, {"name": "Браслет", "owner": "masha", "price": 5000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775392380000, "time": "2026-04-05T12:33:00"}, {"name": "Браслет", "owner": "masha", "price": 5000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775392440000, "time": "2026-04-05T12:34:00"}, {"name": "Браслет", "owner": "masha", "price": 10000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775392500000, "time": "2026-04-05T12:35:00"}, {"name": "Шпилька", "owner": "masha", "price": 10000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775392560000, "time": "2026-04-05T12:36:00"}, {"name": "Шпилька", "owner": "masha", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775392620000, "time": "2026-04-05T12:37:00"}, {"name": "Подвеска", "owner": "masha", "price": 15000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775392680000, "time": "2026-04-05T12:38:00"}, {"name": "Брелок (Дерпи)", "owner": "masha", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775392740000, "time": "2026-04-05T12:39:00"}, {"name": "Заколка", "owner": "masha", "price": 1000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775392800000, "time": "2026-04-05T12:40:00"}, {"name": "Шпилька (2шт)", "owner": "masha", "price": 5000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775392860000, "time": "2026-04-05T12:41:00"}, {"name": "Ушки Эльфа", "owner": "masha", "price": 5000.0, "pay": "cash", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775392920000, "time": "2026-04-05T12:42:00"}, {"name": "Магнит Черепашка", "owner": "masha", "price": 10000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775392980000, "time": "2026-04-05T12:43:00"}, {"name": "Заколка", "owner": "masha", "price": 2000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775393040000, "time": "2026-04-05T12:44:00"}, {"name": "Ловец Солнца", "owner": "masha", "price": 6000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775393100000, "time": "2026-04-05T12:45:00"}, {"name": "Браслет", "owner": "masha", "price": 12805.0, "pay": "card", "receipt": true, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775393160000, "time": "2026-04-05T12:46:00"}, {"name": "Браслет", "owner": "masha", "price": 5000.0, "pay": "card", "receipt": true, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775393220000, "time": "2026-04-05T12:47:00"}, {"name": "Браслет детский (2 шт)", "owner": "masha", "price": 8000.0, "pay": "card", "receipt": true, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775393280000, "time": "2026-04-05T12:48:00"}, {"name": "Брелок", "owner": "masha", "price": 1000.0, "pay": "card", "receipt": true, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775393340000, "time": "2026-04-05T12:49:00"}, {"name": "Брелок", "owner": "masha", "price": 2000.0, "pay": "card", "receipt": true, "eventKey": "evt_festival_the_bbom", "eventName": "Festival The Bbom", "ts": 1775393400000, "time": "2026-04-05T12:50:00"}, {"name": "Ловец солнца", "owner": "masha", "price": 5000.0, "pay": "card", "receipt": true, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778328000000, "time": "2026-05-09T12:00:00"}, {"name": "Заколка Рыбка", "owner": "masha", "price": 4000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778328060000, "time": "2026-05-09T12:01:00"}, {"name": "Заколка Рыбка", "owner": "masha", "price": 4000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778328120000, "time": "2026-05-09T12:02:00"}, {"name": "Браслет (стекло)", "owner": "masha", "price": 5000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778328180000, "time": "2026-05-09T12:03:00"}, {"name": "Заколка Бабочка", "owner": "masha", "price": 2000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778328240000, "time": "2026-05-09T12:04:00"}, {"name": "Заколка Бабочка", "owner": "masha", "price": 2000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778328300000, "time": "2026-05-09T12:05:00"}, {"name": "Тарелка Ракушка", "owner": "masha", "price": 6000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778328360000, "time": "2026-05-09T12:06:00"}, {"name": "Тарелка Ракушка", "owner": "masha", "price": 6000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778328420000, "time": "2026-05-09T12:07:00"}, {"name": "Шпилька", "owner": "masha", "price": 5000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778328480000, "time": "2026-05-09T12:08:00"}, {"name": "Шпилька", "owner": "masha", "price": 6000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778328540000, "time": "2026-05-09T12:09:00"}, {"name": "Браслет (стекло)", "owner": "masha", "price": 5000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778328600000, "time": "2026-05-09T12:10:00"}, {"name": "Заколка Бабочка", "owner": "masha", "price": 2000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778328660000, "time": "2026-05-09T12:11:00"}, {"name": "Заколка Бабочка", "owner": "masha", "price": 2000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778328720000, "time": "2026-05-09T12:12:00"}, {"name": "Брелок Дерпи", "owner": "masha", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778328780000, "time": "2026-05-09T12:13:00"}, {"name": "Серьги", "owner": "masha", "price": 6000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778328840000, "time": "2026-05-09T12:14:00"}, {"name": "Браслет (пружина)", "owner": "masha", "price": 7000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778328900000, "time": "2026-05-09T12:15:00"}, {"name": "Ожерелье", "owner": "masha", "price": 10000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778328960000, "time": "2026-05-09T12:16:00"}, {"name": "Карточка Слова", "owner": "katya", "price": 1500.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778329020000, "time": "2026-05-09T12:17:00"}, {"name": "Браслет (стекло)", "owner": "masha", "price": 6000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778329080000, "time": "2026-05-09T12:18:00"}, {"name": "Браслет (стекло)", "owner": "masha", "price": 6000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778329140000, "time": "2026-05-09T12:19:00"}, {"name": "Ожерелье", "owner": "masha", "price": 15000.0, "pay": "card", "receipt": true, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778329200000, "time": "2026-05-09T12:20:00"}, {"name": "Браслет (стекло)", "owner": "masha", "price": 5000.0, "pay": "card", "receipt": true, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778329260000, "time": "2026-05-09T12:21:00"}, {"name": "Браслет (стекло)", "owner": "masha", "price": 5000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778329320000, "time": "2026-05-09T12:22:00"}, {"name": "Браслет (стекло)", "owner": "masha", "price": 5000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778329380000, "time": "2026-05-09T12:23:00"}, {"name": "Браслет (стекло)", "owner": "masha", "price": 5000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778329440000, "time": "2026-05-09T12:24:00"}, {"name": "Браслет (стекло)", "owner": "masha", "price": 5000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778329500000, "time": "2026-05-09T12:25:00"}, {"name": "Ожерелье", "owner": "masha", "price": 10000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778329560000, "time": "2026-05-09T12:26:00"}, {"name": "Шпилька", "owner": "masha", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778329620000, "time": "2026-05-09T12:27:00"}, {"name": "Брелок Тюлень", "owner": "masha", "price": 1000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778329680000, "time": "2026-05-09T12:28:00"}, {"name": "Брелок Тюлень", "owner": "masha", "price": 1000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778329740000, "time": "2026-05-09T12:29:00"}, {"name": "Брелок Тюлень", "owner": "masha", "price": 1000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778329800000, "time": "2026-05-09T12:30:00"}, {"name": "Магнит Черепашка", "owner": "masha", "price": 6000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778329860000, "time": "2026-05-09T12:31:00"}, {"name": "Браслет (стекло)", "owner": "masha", "price": 5000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778329920000, "time": "2026-05-09T12:32:00"}, {"name": "Браслет (стекло)", "owner": "masha", "price": 5000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778329980000, "time": "2026-05-09T12:33:00"}, {"name": "Браслет (стекло)", "owner": "masha", "price": 5000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778330040000, "time": "2026-05-09T12:34:00"}, {"name": "Браслет (стекло)", "owner": "masha", "price": 5000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778330100000, "time": "2026-05-09T12:35:00"}, {"name": "Серьги (эпоксид)", "owner": "masha", "price": 5000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778330160000, "time": "2026-05-09T12:36:00"}, {"name": "Шпилька", "owner": "masha", "price": 7000.0, "pay": "card", "receipt": true, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778330220000, "time": "2026-05-09T12:37:00"}, {"name": "Шпилька", "owner": "masha", "price": 7000.0, "pay": "card", "receipt": true, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778330280000, "time": "2026-05-09T12:38:00"}, {"name": "Брелок Слова", "owner": "katya", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778330340000, "time": "2026-05-09T12:39:00"}, {"name": "Магнит Слова", "owner": "katya", "price": 4000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778330400000, "time": "2026-05-09T12:40:00"}, {"name": "Значок Слова", "owner": "katya", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778330460000, "time": "2026-05-09T12:41:00"}, {"name": "Карточка Слова", "owner": "katya", "price": 1500.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778330520000, "time": "2026-05-09T12:42:00"}, {"name": "Браслет (стекло)", "owner": "masha", "price": 5000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778330580000, "time": "2026-05-09T12:43:00"}, {"name": "Браслет", "owner": "masha", "price": 7000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778330640000, "time": "2026-05-09T12:44:00"}, {"name": "Браслет (камень)", "owner": "masha", "price": 10000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778330700000, "time": "2026-05-09T12:45:00"}, {"name": "Брелок Тюлень", "owner": "masha", "price": 1000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778330760000, "time": "2026-05-09T12:46:00"}, {"name": "Магнит Черепашка", "owner": "masha", "price": 6000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778330820000, "time": "2026-05-09T12:47:00"}, {"name": "Магнит Черепашка", "owner": "masha", "price": 6000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778330880000, "time": "2026-05-09T12:48:00"}, {"name": "Брелок Тюлень", "owner": "masha", "price": 1000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778330940000, "time": "2026-05-09T12:49:00"}, {"name": "Брелок Тюлень", "owner": "masha", "price": 1000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778331000000, "time": "2026-05-09T12:50:00"}, {"name": "Брелок Тюлень", "owner": "masha", "price": 1000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778331060000, "time": "2026-05-09T12:51:00"}, {"name": "Стикер 1 шт", "owner": "katya", "price": 1500.0, "pay": "card", "receipt": true, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778331120000, "time": "2026-05-09T12:52:00"}, {"name": "Заколка Бабочка", "owner": "masha", "price": 2000.0, "pay": "card", "receipt": true, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778331180000, "time": "2026-05-09T12:53:00"}, {"name": "Стикер 1 шт", "owner": "katya", "price": 1500.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778331240000, "time": "2026-05-09T12:54:00"}, {"name": "Серьги (камень)", "owner": "masha", "price": 7000.0, "pay": "card", "receipt": true, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778331300000, "time": "2026-05-09T12:55:00"}, {"name": "Мистэри Пэк", "owner": "katya", "price": 7000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778331360000, "time": "2026-05-09T12:56:00"}, {"name": "Брелок (круглый)", "owner": "katya", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778331420000, "time": "2026-05-09T12:57:00"}, {"name": "Браслет (стекло)", "owner": "masha", "price": 5000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778331480000, "time": "2026-05-09T12:58:00"}, {"name": "Шпилька", "owner": "masha", "price": 4000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778331540000, "time": "2026-05-09T12:59:00"}, {"name": "Магнит Черепашка", "owner": "masha", "price": 6000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778331600000, "time": "2026-05-09T13:00:00"}, {"name": "Магнит Черепашка", "owner": "masha", "price": 6000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778331660000, "time": "2026-05-09T13:01:00"}, {"name": "Брелок Дерпи", "owner": "masha", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778331720000, "time": "2026-05-09T13:02:00"}, {"name": "Стикеры 3 шт", "owner": "katya", "price": 5000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778331780000, "time": "2026-05-09T13:03:00"}, {"name": "Серьги (камень)", "owner": "masha", "price": 7000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778331840000, "time": "2026-05-09T13:04:00"}, {"name": "Серьги (камень)", "owner": "masha", "price": 7000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778331900000, "time": "2026-05-09T13:05:00"}, {"name": "Магнит Черепашка", "owner": "masha", "price": 6000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778331960000, "time": "2026-05-09T13:06:00"}, {"name": "Брелок (круглый)", "owner": "katya", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778332020000, "time": "2026-05-09T13:07:00"}, {"name": "Брелок Дерпи", "owner": "masha", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778332080000, "time": "2026-05-09T13:08:00"}, {"name": "Брелок (круглый)", "owner": "katya", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778332140000, "time": "2026-05-09T13:09:00"}, {"name": "Браслет (стекло)", "owner": "masha", "price": 5000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778332200000, "time": "2026-05-09T13:10:00"}, {"name": "Брелок Дерпи", "owner": "masha", "price": 3000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778332260000, "time": "2026-05-09T13:11:00"}, {"name": "Ловец солнца", "owner": "masha", "price": 5000.0, "pay": "card", "receipt": true, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778332320000, "time": "2026-05-09T13:12:00"}, {"name": "Браслет (камень/спираль)", "owner": "masha", "price": 13000.0, "pay": "card", "receipt": true, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778332380000, "time": "2026-05-09T13:13:00"}, {"name": "Брелок (круглый)", "owner": "katya", "price": 3000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778332440000, "time": "2026-05-09T13:14:00"}, {"name": "Серьги (Сакура)", "owner": "masha", "price": 6000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778332500000, "time": "2026-05-09T13:15:00"}, {"name": "Серьги (бабочки)", "owner": "masha", "price": 3000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778332560000, "time": "2026-05-09T13:16:00"}, {"name": "Ловец солнца", "owner": "masha", "price": 5000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778332620000, "time": "2026-05-09T13:17:00"}, {"name": "Брелок (круглый)", "owner": "katya", "price": 3000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778332680000, "time": "2026-05-09T13:18:00"}, {"name": "Брелок Тюлень", "owner": "masha", "price": 1000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778332740000, "time": "2026-05-09T13:19:00"}, {"name": "Брелок Тюлень", "owner": "masha", "price": 1000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778332800000, "time": "2026-05-09T13:20:00"}, {"name": "Брелок Тюлень", "owner": "masha", "price": 1000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778332860000, "time": "2026-05-09T13:21:00"}, {"name": "Брелок Тюлень", "owner": "masha", "price": 1000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778332920000, "time": "2026-05-09T13:22:00"}, {"name": "Магнитик (круглый)", "owner": "katya", "price": 4000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778332980000, "time": "2026-05-09T13:23:00"}, {"name": "Браслет (камень)", "owner": "masha", "price": 10000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778333040000, "time": "2026-05-09T13:24:00"}, {"name": "Стикеры 3 шт", "owner": "katya", "price": 5000.0, "pay": "card", "receipt": true, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778333100000, "time": "2026-05-09T13:25:00"}, {"name": "Браслет (стекло+камень)", "owner": "masha", "price": 7000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778333160000, "time": "2026-05-09T13:26:00"}, {"name": "Браслет (стекло)", "owner": "masha", "price": 5000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778333220000, "time": "2026-05-09T13:27:00"}, {"name": "Мистэри Пэк", "owner": "katya", "price": 7000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778333280000, "time": "2026-05-09T13:28:00"}, {"name": "Мистэри Пэк", "owner": "katya", "price": 7000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778333340000, "time": "2026-05-09T13:29:00"}, {"name": "Мистэри Пэк", "owner": "katya", "price": 7000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778333400000, "time": "2026-05-09T13:30:00"}, {"name": "Браслет (стекло)", "owner": "masha", "price": 5000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778333460000, "time": "2026-05-09T13:31:00"}, {"name": "Стикер 1 шт", "owner": "katya", "price": 1500.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778333520000, "time": "2026-05-09T13:32:00"}, {"name": "Стикеры 5 шт", "owner": "katya", "price": 7000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778333580000, "time": "2026-05-09T13:33:00"}, {"name": "Брелок (круглый)", "owner": "katya", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778333640000, "time": "2026-05-09T13:34:00"}, {"name": "Брелок (круглый)", "owner": "katya", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778333700000, "time": "2026-05-09T13:35:00"}, {"name": "Браслет (стекло)", "owner": "masha", "price": 6000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778333760000, "time": "2026-05-09T13:36:00"}, {"name": "Браслет (стекло)", "owner": "masha", "price": 5000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778333820000, "time": "2026-05-09T13:37:00"}, {"name": "Мистэри Пэк", "owner": "katya", "price": 7000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778333880000, "time": "2026-05-09T13:38:00"}, {"name": "Брелок (круглый)", "owner": "katya", "price": 3000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778333940000, "time": "2026-05-09T13:39:00"}, {"name": "Брелок Тюлень", "owner": "masha", "price": 1000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778334000000, "time": "2026-05-09T13:40:00"}, {"name": "Брелок Тюлень", "owner": "masha", "price": 1000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778334060000, "time": "2026-05-09T13:41:00"}, {"name": "Шпилька", "owner": "masha", "price": 6000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778334120000, "time": "2026-05-09T13:42:00"}, {"name": "Брелок Слова", "owner": "katya", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778334180000, "time": "2026-05-09T13:43:00"}, {"name": "Брелок Слова", "owner": "katya", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778334240000, "time": "2026-05-09T13:44:00"}, {"name": "Брелок Слова", "owner": "katya", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778334300000, "time": "2026-05-09T13:45:00"}, {"name": "Брелок Слова", "owner": "katya", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778334360000, "time": "2026-05-09T13:46:00"}, {"name": "Брелок Слова", "owner": "katya", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778334420000, "time": "2026-05-09T13:47:00"}, {"name": "Брелок Слова", "owner": "katya", "price": 3000.0, "pay": "cash", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778334480000, "time": "2026-05-09T13:48:00"}, {"name": "Мистэри Пэк", "owner": "katya", "price": 7000.0, "pay": "tonjan", "receipt": false, "eventKey": "evt_христианский_фестиваль_ансан", "eventName": "Христианский Фестиваль (Ансан)", "ts": 1778334540000, "time": "2026-05-09T13:49:00"}];
+// ===== PRINT ALL BARCODES =====
+function printAllBarcodes(){
+  var list = catFilter==='all' ? products : products.filter(function(p){ return p.owner===catFilter; });
+  list = sortProductList(list);
+  if(!list.length){ toast('Нет товаров','err'); return; }
 
-function importFairs2026(){
-  if(!confirm('Импортировать 3 архивные ярмарки (Dodam Market, Festival The Bbom, Христианский Фестиваль) — всего '+FAIRS_2026_SALES.length+' продаж? Это можно сделать только один раз, иначе данные задвоятся.'))return;
-  var btn=document.getElementById('import-fairs-btn');
-  if(btn){btn.disabled=true;btn.textContent='Импортирую...';}
-  var keyMap={};
-  var evPromises=FAIRS_2026_EVENTS.map(function(ev){
-    return db.ref('events').push({name:ev.name,startDate:ev.startDate,endDate:ev.endDate,createdAt:Date.now()}).then(function(ref){
-      keyMap[ev.key]=ref.key;
-    });
+  var pdata = JSON.stringify(list.map(function(p){ return {id:p.id, name:p.name}; }));
+
+  var html = [
+    '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Штрихкоды</title>',
+    '<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>',
+    '<style>',
+    'body{margin:0;padding:8px;background:#fff;font-family:Arial,sans-serif}',
+    '.grid{display:flex;flex-wrap:wrap;gap:8px;padding:4px}',
+    '.bc-item{border:1px solid #ddd;border-radius:6px;padding:6px;text-align:center;width:120px;page-break-inside:avoid}',
+    '.bc-name{font-size:9px;color:#333;margin-top:4px;word-break:break-word;line-height:1.3}',
+    '.bc-id{font-size:8px;color:#999;margin-top:2px}',
+    '@media print{.no-print{display:none}}',
+    '</style></head><body>',
+    '<div class="no-print" style="padding:8px;background:#f0f0f0;margin-bottom:8px;display:flex;gap:12px;align-items:center">',
+    '<button onclick="window.print()" style="padding:8px 20px;background:#1D9E75;color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer">🖨 Печать</button>',
+    '<span style="font-size:13px;color:#666">' + list.length + ' штрихкодов</span>',
+    '</div>',
+    '<div class="grid" id="bcgrid"></div>',
+    '<script>',
+    'var pd=' + pdata + ';',
+    'var g=document.getElementById("bcgrid");',
+    'pd.forEach(function(p,i){',
+    '  var d=document.createElement("div");d.className="bc-item";',
+    '  var s=document.createElementNS("http://www.w3.org/2000/svg","svg");s.id="s"+i;',
+    '  d.appendChild(s);',
+    '  var n=document.createElement("div");n.className="bc-name";n.textContent=p.name;d.appendChild(n);',
+    '  var c=document.createElement("div");c.className="bc-id";c.textContent=p.id;d.appendChild(c);',
+    '  g.appendChild(d);',
+    '});',
+    'setTimeout(function(){',
+    '  pd.forEach(function(p,i){',
+    '    try{JsBarcode("#s"+i,p.id,{format:"CODE128",width:1.5,height:40,displayValue:false,margin:2});}catch(e){}',
+    '  });',
+    '},300);',
+    '<\/script></body></html>'
+  ].join('');
+
+  var win = window.open('','_blank');
+  win.document.write(html);
+  win.document.close();
+}
+
+
+
+// ===== CATEGORIES MODULE =====
+var CATS = {
+  katya: ['Стикеры','Наклейки','Значки','Брелоки','Магниты','Прочее'],
+  masha: ['Браслеты (стекло)','Браслеты (камень)','Ожерелья (стекло)','Ожерелья (камень)','Подвески','Эпоксидка','Прочее']
+};
+
+var catCategoryFilter = ''; // active category filter
+
+// Update category options when owner changes in add form
+function updateCatOptions(owner){
+  var sel = document.getElementById('new-category');
+  if(!sel) return;
+  var cats = CATS[owner] || CATS.katya;
+  sel.innerHTML = '<option value="">— выберите —</option>';
+  cats.forEach(function(c){
+    var opt = document.createElement('option');
+    opt.value = c; opt.textContent = c;
+    sel.appendChild(opt);
   });
-  Promise.all(evPromises).then(function(){
-    var salePromises=FAIRS_2026_SALES.map(function(s){
-      return db.ref('sales').push({
-        name:s.name,owner:s.owner,price:s.price,pay:s.pay,receipt:s.receipt,
-        eventId:keyMap[s.eventKey],eventName:s.eventName,
-        ts:s.ts,time:s.time,productId:null
-      });
-    });
-    return Promise.all(salePromises);
-  }).then(function(){
-    toast('Импортировано: 3 ивента, '+FAIRS_2026_SALES.length+' продаж!','ok');
-    if(btn){btn.textContent='✅ Импортировано';}
-  }).catch(function(err){
-    toast('Ошибка импорта: '+err.message,'err');
-    if(btn){btn.disabled=false;btn.textContent='📥 Импортировать архив ярмарок 2026';}
+  var custom = document.createElement('option');
+  custom.value = '__custom'; custom.textContent = '✏️ Своя...';
+  sel.appendChild(custom);
+}
+
+// Handle custom category input
+document.getElementById('new-category') && document.getElementById('new-category').addEventListener('change', function(){
+  if(this.value === '__custom'){
+    var custom = prompt('Введите название категории:');
+    if(custom){
+      var opt = document.createElement('option');
+      opt.value = custom; opt.textContent = custom; opt.selected = true;
+      this.insertBefore(opt, this.lastElementChild);
+      this.value = custom;
+    } else {
+      this.value = '';
+    }
+  }
+});
+
+// Render category filter buttons
+function renderCatCategoryFilters(){
+  var el = document.getElementById('cat-category-filters');
+  if(!el) return;
+  el.innerHTML = '';
+
+  // Get categories for current filter
+  var cats = [];
+  if(catFilter === 'katya') cats = CATS.katya;
+  else if(catFilter === 'masha') cats = CATS.masha;
+  else {
+    // Show all + from products
+    var allCats = {};
+    products.forEach(function(p){ if(p.category) allCats[p.category]=true; });
+    cats = Object.keys(allCats);
+  }
+
+  // Also add categories from products not in preset list
+  var extraCats = {};
+  products.forEach(function(p){
+    if(p.category && cats.indexOf(p.category) < 0) extraCats[p.category] = true;
+  });
+  cats = cats.concat(Object.keys(extraCats));
+
+  if(!cats.length){ el.style.display='none'; return; }
+  el.style.display = 'flex';
+
+  // "All" button
+  var allBtn = document.createElement('button');
+  allBtn.className = 'cat-filter-btn' + (catCategoryFilter===''?' on':'');
+  allBtn.textContent = 'Все категории';
+  allBtn.onclick = function(){ catCategoryFilter=''; renderCatCategoryFilters(); renderCatalog(); };
+  el.appendChild(allBtn);
+
+  cats.forEach(function(c){
+    var btn = document.createElement('button');
+    btn.className = 'cat-filter-btn' + (catCategoryFilter===c?' on':'');
+    btn.textContent = c;
+    btn.onclick = function(){ catCategoryFilter=c; renderCatCategoryFilters(); renderCatalog(); };
+    el.appendChild(btn);
   });
 }
+
+// Override filterCat to also reset category filter and update buttons
+var _origFilterCat = filterCat;
+filterCat = function(f){
+  catCategoryFilter = '';
+  _origFilterCat(f);
+  renderCatCategoryFilters();
+};
+
+// Override renderCatalog to filter by category too
+var _origRenderCatalogSort = renderCatalog;
+renderCatalog = function(){
+  // Apply category filter to products before rendering
+  var _origProducts = products;
+  if(catCategoryFilter){
+    var savedProducts = products;
+    products = products.filter(function(p){ return p.category === catCategoryFilter; });
+    _origRenderCatalogSort();
+    products = savedProducts;
+  } else {
+    _origRenderCatalogSort();
+  }
+  renderCatCategoryFilters();
+};
+
+// Override addProduct to include category
+var _origAddProduct3 = addProduct;
+addProduct = function(){
+  var catSel = document.getElementById('new-category');
+  var category = catSel ? catSel.value : '';
+  if(category === '__custom') category = '';
+
+  // Patch db.ref('products').push to include category
+  var _origPush = db.ref('products').push.bind(db.ref('products'));
+
+  var name = document.getElementById('new-name').value.trim();
+  var price = parseFloat(document.getElementById('new-price').value)||0;
+  var owner = document.getElementById('new-owner').value;
+  if(!name){ toast('Введите название','err'); return; }
+
+  var photoInput = document.getElementById('new-photo');
+  var file = photoInput && photoInput.files[0];
+
+  function saveProduct(photo){
+    var id = 'P'+String(Date.now()).slice(-6);
+    var productData = {id:id, name:name, price:price, owner:owner, brought:0, sold:0};
+    if(photo) productData.photo = photo;
+    if(category) productData.category = category;
+    if(newVariants && newVariants.length) productData.variants = newVariants;
+
+    db.ref('products').push(productData);
+    document.getElementById('new-name').value = '';
+    document.getElementById('new-price').value = '';
+    if(photoInput) photoInput.value = '';
+    var nameEl = document.getElementById('new-photo-name');
+    if(nameEl) nameEl.textContent = '';
+    if(catSel) catSel.value = '';
+    newVariants = [];
+    renderNewVariantsList();
+    document.getElementById('new-variants-panel').style.display = 'none';
+    document.getElementById('var-toggle-btn').textContent = '+ Добавить варианты';
+    toast('Товар добавлен','ok');
+  }
+
+  if(file){
+    compressImage(file, 600, 0.8, function(compressed){ saveProduct(compressed); });
+  } else {
+    saveProduct(null);
+  }
+};
+
+// Show category tag on catalog cards
+var _origRenderCatalogWithCat = renderCatalog;
+
+// Add category badge to renderCatalog (override the overlay section)
+// Hook into card creation by patching after render
+function addCategoryBadgesToCards(){
+  products.forEach(function(p){
+    if(!p.category) return;
+    var key = (p.fbKey||p.id||'x').replace(/[^a-zA-Z0-9]/g,'_');
+    var card = document.querySelector('[data-fbkey="'+p.fbKey+'"]');
+    if(!card) return;
+    var info = card.querySelector('.cat-info');
+    if(!info) return;
+    // Check if badge already exists
+    if(info.querySelector('.cat-tag')) return;
+    var badge = document.createElement('span');
+    badge.className = 'cat-tag '+(p.owner==='katya'?'k':'m');
+    badge.textContent = p.category;
+    info.appendChild(badge);
+  });
+}
+
+// Also allow editing category on existing products
+function updateCategory(fbKey, category){
+  db.ref('products/'+fbKey).update({category: category});
+  var p = products.find(function(x){ return x.fbKey===fbKey; });
+  if(p) p.category = category;
+  toast('Категория обновлена','ok');
+}
+
+// Init
+setTimeout(function(){
+  renderCatCategoryFilters();
+}, 800);
 
 </script>
 </body>
