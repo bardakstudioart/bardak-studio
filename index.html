@@ -5047,19 +5047,7 @@ renderCatalog = function(){
               '<option value="preorder" '+(p.availability==='preorder'?'selected':'')+'>📋 Предзаказ</option>'+
             '</select>'+
           '</div>'+
-          '<div style="margin-top:4px">'+
-            '<select class="cat-category-sel fi" style="font-size:10px;padding:2px 6px;border-radius:20px;width:auto;color:var(--muted)">'+
-              '<option value="">— категория —</option>'+
-              (function(){
-                var cats = p.owner==='masha' ?
-                  ['Браслеты (стекло)','Браслеты (камень)','Ожерелья (стекло)','Ожерелья (камень)','Подвески','Эпоксидка','Прочее'] :
-                  ['Стикеры','Наклейки','Значки','Брелоки','Магниты','Прочее'];
-                return cats.map(function(c){
-                  return '<option value="'+c+'"'+(p.category===c?' selected':'')+'>'+c+'</option>';
-                }).join('');
-              })()+
-              '<option value="__custom">✏️ Своя...</option>'+
-            '</select>'+
+          '<div style="margin-top:4px" class="cat-sel-wrap">'+
           '</div>'+
         '</div>'+
         '<div style="display:flex;flex-direction:column;gap:4px">'+
@@ -5115,6 +5103,63 @@ renderCatalog = function(){
           updateCategory(p.fbKey, val);
         }
       };
+    }
+
+    // Build category select via DOM
+    var catWrap = div.querySelector('.cat-sel-wrap');
+    if(catWrap){
+      var catSelect = document.createElement('select');
+      catSelect.className = 'cat-category-sel fi';
+      catSelect.style.cssText = 'font-size:10px;padding:2px 6px;border-radius:20px;width:auto';
+
+      var cats = p.owner==='masha' ?
+        ['Браслеты (стекло)','Браслеты (камень)','Ожерелья (стекло)','Ожерелья (камень)','Подвески','Эпоксидка','Прочее'] :
+        ['Стикеры','Наклейки','Значки','Брелоки','Магниты','Прочее'];
+
+      var defaultOpt = document.createElement('option');
+      defaultOpt.value = ''; defaultOpt.textContent = '— категория —';
+      catSelect.appendChild(defaultOpt);
+
+      cats.forEach(function(c){
+        var o = document.createElement('option');
+        o.value = c; o.textContent = c;
+        if(p.category === c) o.selected = true;
+        catSelect.appendChild(o);
+      });
+
+      // Add custom option if product has a category not in list
+      if(p.category && cats.indexOf(p.category) < 0){
+        var existOpt = document.createElement('option');
+        existOpt.value = p.category; existOpt.textContent = p.category; existOpt.selected = true;
+        catSelect.insertBefore(existOpt, catSelect.lastElementChild);
+      }
+
+      var customOpt = document.createElement('option');
+      customOpt.value = '__custom'; customOpt.textContent = '✏️ Своя...';
+      catSelect.appendChild(customOpt);
+
+      catSelect.onchange = function(){
+        var val = this.value;
+        if(val === '__custom'){
+          var custom = prompt('Введите категорию:');
+          if(custom && custom.trim()){
+            custom = custom.trim();
+            var o = document.createElement('option');
+            o.value = custom; o.textContent = custom; o.selected = true;
+            this.insertBefore(o, this.lastElementChild);
+            this.value = custom;
+            updateCategory(p.fbKey, custom);
+            p.category = custom;
+          } else {
+            this.value = p.category||'';
+          }
+        } else if(val !== ''){
+          updateCategory(p.fbKey, val);
+          p.category = val;
+        }
+      };
+
+      catWrap.appendChild(catSelect);
     }
 
     var priceInput = div.querySelector('.cat-price-input');
